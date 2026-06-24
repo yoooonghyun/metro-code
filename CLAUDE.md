@@ -34,8 +34,10 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
    does this through the `setup` skill → `scripts/setup.py`, which merges a
    `statusLine` entry into `~/.claude/settings.json` (or `.claude/settings.json`
    with `--project`). It refuses to overwrite a pre-existing different status
-   line. `setup.py` writes an **absolute** script path, so setup must be re-run
-   after a plugin update (the cache path changes).
+   line. `setup.py` writes an **absolute** script path, so it must be re-pointed
+   after a plugin update (the cache path changes) — `setup.py --update` rewrites
+   the path wherever our entry is installed (global and/or project), and the
+   `update` skill chains marketplace-update → plugin-update → `--update`.
 
 2. **User state must not live in the plugin directory.** `${CLAUDE_PLUGIN_ROOT}`
    changes on every update, which would wipe data. `scripts/common.py` resolves

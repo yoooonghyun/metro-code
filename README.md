@@ -67,7 +67,8 @@ metro-code/
         │   ├── alias-symbol/       # custom display label (e.g. Korean)
         │   ├── list-symbols/       # show watchlist & targets
         │   ├── set-target/         # price-target alerts
-        │   └── setup/              # one-time status line install
+        │   ├── setup/              # one-time status line install
+        │   └── update/             # update the plugin to the latest version
         └── README.md
 ```
 

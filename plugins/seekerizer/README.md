@@ -66,6 +66,7 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 | `skills/list-symbols/` | show watchlist & targets (`/seekerizer:list-symbols`) |
 | `skills/set-target/` | price-target alerts (`/seekerizer:set-target`) |
 | `skills/setup/` | one-time status line setup (`/seekerizer:setup`) |
+| `skills/update/` | update the plugin to the latest version (`/seekerizer:update`) |
 
 - **Data location**: the watchlist (`tickers.json`), price targets
   (`targets.json`), display aliases (`aliases.json`), and quote cache
@@ -97,14 +98,19 @@ fires once, then re-arms when you set it again.
 > Alerts are an **experimental** plugin monitor and only run while a Claude Code
 > session is open — there are no alerts when Claude Code is closed.
 
-## After a plugin update
+## Updating
 
-The watchlist persists, but the plugin's script path changes, so re-run setup
-once:
+Update to the latest version with the `update` skill:
 
 ```text
-/seekerizer:setup
+/seekerizer:update
 ```
+
+It refreshes the marketplace (`claude plugin marketplace update metro-code`),
+updates the plugin, and re-points the status line — the plugin's script path
+changes on update, so the absolute path in your settings must be refreshed
+(`setup.py --update`). Your watchlist, targets, and aliases persist across
+updates. Start a new session afterward.
 
 ## Requirements
 
