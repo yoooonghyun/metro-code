@@ -1,0 +1,11 @@
+{
+  "name": "stock-alerts",
+  "displayName": "Stock Alerts",
+  "version": "1.0.0",
+  "description": "Inline stock price ticker for the Claude Code status line, with skill-based watchlist management. Quotes from Yahoo Finance (no API key).",
+  "author": {
+    "name": "yoooonghyun"
+  },
+  "keywords": ["stocks", "finance", "status-line", "ticker", "quotes"],
+  "skills": "./skills/"
+}

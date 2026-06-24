@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "metro-code",
+  "owner": {
+    "name": "yoooonghyun",
+    "email": "yoooonghyun@gmail.com"
+  },
+  "description": "Claude Code plugins by yoooonghyun.",
+  "plugins": [
+    {
+      "name": "stock-alerts",
+      "source": "./plugins/stock-alerts",
+      "description": "Inline stock price ticker for the Claude Code status line, with skill-based watchlist management. Quotes from Yahoo Finance (no API key).",
+      "version": "1.0.0",
+      "author": {
+        "name": "yoooonghyun"
+      },
+      "keywords": ["stocks", "finance", "status-line", "ticker", "quotes"],
+      "category": "productivity"
+    }
+  ]
+}
