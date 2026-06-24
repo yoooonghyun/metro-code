@@ -16,7 +16,7 @@ In Claude Code:
 Then run the one-time setup so the status line shows up:
 
 ```text
-/stock-alerts:stock-alerts-setup
+/stock-alerts:setup
 ```
 
 Start a new session and you'll see live quotes at the bottom of Claude Code.
@@ -52,7 +52,7 @@ metro-code/
         ├── .claude-plugin/plugin.json
         ├── scripts/              # python (stdlib only)
         ├── skills/
-        │   ├── stock-alerts/         # manage watchlist
-        │   └── stock-alerts-setup/   # one-time status line install
+        │   ├── manage/   # manage watchlist (/stock-alerts:manage)
+        │   └── setup/    # one-time status line install (/stock-alerts:setup)
         └── README.md
 ```

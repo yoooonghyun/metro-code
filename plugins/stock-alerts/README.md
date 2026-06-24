@@ -12,7 +12,7 @@ watchlist management. Quotes from the Yahoo Finance public API — **no API key*
 ```text
 /plugin marketplace add yoooonghyun/metro-code
 /plugin install stock-alerts@metro-code
-/stock-alerts:stock-alerts-setup
+/stock-alerts:setup
 ```
 
 The setup step is required once: a plugin cannot register the top-level
@@ -55,8 +55,8 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" clear
 | `scripts/stock_manage.py` | add/remove/list/clear, validates symbols |
 | `scripts/setup.py` | install/remove the status line in your settings |
 | `scripts/_common.py` | shared paths/helpers |
-| `skills/stock-alerts/` | natural-language watchlist management |
-| `skills/stock-alerts-setup/` | one-time status line setup |
+| `skills/manage/` | natural-language watchlist management (`/stock-alerts:manage`) |
+| `skills/setup/` | one-time status line setup (`/stock-alerts:setup`) |
 
 - **Data location**: the watchlist (`tickers.json`) and quote cache
   (`cache.json`) live in the plugin's persistent data dir
@@ -71,7 +71,7 @@ The watchlist persists, but the plugin's script path changes, so re-run setup
 once:
 
 ```text
-/stock-alerts:stock-alerts-setup
+/stock-alerts:setup
 ```
 
 ## Requirements
