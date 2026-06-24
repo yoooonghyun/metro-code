@@ -55,7 +55,7 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" clear
 | `scripts/stock_manage.py` | add/remove/list/clear, validates symbols |
 | `scripts/setup.py` | install/remove the status line in your settings |
 | `scripts/_common.py` | shared paths/helpers |
-| `skills/manage/` | natural-language watchlist management (`/stock-alerts:manage`) |
+| `skills/add-stock/` | natural-language watchlist management (`/stock-alerts:add-stock`) |
 | `skills/setup/` | one-time status line setup (`/stock-alerts:setup`) |
 
 - **Data location**: the watchlist (`tickers.json`) and quote cache

@@ -1,5 +1,5 @@
 ---
-name: manage
+name: add-stock
 description: >-
   Add, remove, list, or clear the stocks shown in the Claude Code inline status
   line. Use when the user mentions stocks/quotes/watchlist — e.g. "주식 종목

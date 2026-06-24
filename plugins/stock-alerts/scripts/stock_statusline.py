@@ -108,7 +108,7 @@ def main():
 
     tickers = load_tickers()
     if not tickers:
-        print("📈 추적 중인 종목 없음 — /stock-alerts:manage 로 종목을 추가하세요")
+        print("📈 추적 중인 종목 없음 — /stock-alerts:add-stock 로 종목을 추가하세요")
         return
 
     print(render(tickers, get_quotes(tickers)))
