@@ -2,9 +2,9 @@
 name: add-symbol
 description: >-
   Add, remove, list, or clear the stocks shown in the Claude Code inline status
-  line. Use when the user mentions stocks/quotes/watchlist — e.g. "주식 종목
-  추가해줘", "삼성전자 추가", "테슬라 빼줘", "추적 중인 종목 보여줘",
-  "add AAPL to my ticker", "show my watchlist", "clear stocks".
+  line. Use when the user mentions stocks/quotes/watchlist — e.g. "add AAPL to
+  my ticker", "remove TSLA", "show my watchlist", "clear stocks" (also matches
+  Korean requests such as "삼성전자 추가", "테슬라 빼줘", "추적 중인 종목 보여줘").
 ---
 
 # Seekerizer — watchlist management
@@ -19,17 +19,18 @@ through `manage.py`.
 
 ## Symbol format (Yahoo Finance notation)
 
-| Market                | Example       |
-|-----------------------|---------------|
-| US stock              | `AAPL`, `TSLA`|
-| KOSPI (한국 유가증권) | `005930.KS` (삼성전자) |
-| KOSDAQ                | `035720.KQ`   |
-| Crypto                | `BTC-USD`     |
-| Tokyo                 | `7203.T`      |
+| Market      | Example                  |
+|-------------|--------------------------|
+| US stock    | `AAPL`, `TSLA`           |
+| KOSPI       | `005930.KS` (Samsung)    |
+| KOSDAQ      | `035720.KQ`              |
+| Crypto      | `BTC-USD`               |
+| Tokyo       | `7203.T`                |
 
-Map company names to symbols (삼성전자 → `005930.KS`, SK하이닉스 → `000660.KS`,
-애플 → `AAPL`, 테슬라 → `TSLA`, 엔비디아 → `NVDA`). If unsure of the exact
-code, ask the user to confirm before adding.
+Map company names to symbols, including Korean names the user may say:
+Samsung Electronics / 삼성전자 → `005930.KS`, SK hynix / SK하이닉스 →
+`000660.KS`, Apple / 애플 → `AAPL`, Tesla / 테슬라 → `TSLA`, NVIDIA / 엔비디아 →
+`NVDA`. If unsure of the exact code, ask the user to confirm before adding.
 
 ## Commands
 
@@ -54,7 +55,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" clear
 
 1. Resolve the Yahoo symbol(s) from what the user said (confirm if ambiguous).
 2. Run the appropriate `manage.py` command.
-3. Report the result. If `add` printed "확인 실패", the symbol was rejected —
-   double-check the code with the user.
+3. Report the result. If `add` printed "Validation failed", the symbol was
+   rejected — double-check the code with the user.
 4. The status line refreshes on its own; a new quote appears within ~60s (the
    quote cache window). No restart needed.

@@ -108,7 +108,7 @@ def main():
 
     tickers = load_tickers()
     if not tickers:
-        print("📈 추적 중인 종목 없음 — /seekerizer:add-symbol 로 종목을 추가하세요")
+        print("📈 No symbols tracked — add one with /seekerizer:add-symbol")
         return
 
     print(render(tickers, get_quotes(tickers)))

@@ -1,11 +1,11 @@
 ---
 name: setup
 description: >-
-  One-time setup for the seekerizer plugin: install the stock price status
-  line into the user's Claude Code settings. Use right after installing the
-  plugin, or when the user says "주식 시세 status line 설정/설치해줘",
-  "show stock prices in my status bar", "set up seekerizer",
-  "status line이 안 보여" (status line not showing).
+  One-time setup for the seekerizer plugin: install the stock price status line
+  into the user's Claude Code settings. Use right after installing the plugin,
+  or when the user says "show stock prices in my status bar", "set up
+  seekerizer", "the status line isn't showing" (also matches Korean such as
+  "주식 시세 status line 설정해줘", "status line이 안 보여").
 ---
 
 # Seekerizer — setup
