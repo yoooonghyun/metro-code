@@ -34,8 +34,10 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
    does this through the `setup` skill → `scripts/setup.py`, which merges a
    `statusLine` entry into `~/.claude/settings.json` (or `.claude/settings.json`
    with `--project`). It refuses to overwrite a pre-existing different status
-   line. `setup.py` writes an **absolute** script path, so setup must be re-run
-   after a plugin update (the cache path changes).
+   line. `setup.py` writes an **absolute** script path, so it must be re-pointed
+   after a plugin update (the cache path changes) — `setup.py --update` rewrites
+   the path wherever our entry is installed (global and/or project), and the
+   `update` skill chains marketplace-update → plugin-update → `--update`.
 
 2. **User state must not live in the plugin directory.** `${CLAUDE_PLUGIN_ROOT}`
    changes on every update, which would wipe data. `scripts/common.py` resolves
@@ -43,11 +45,37 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
    `~/.claude/seekerizer`. The watchlist (`tickers.json`) and quote cache
    (`cache.json`) live there and survive updates.
 
-`seekerizer` data flow: `statusline.py` (the status line command) reads the
-watchlist via `common.py`, fetches quotes from the Yahoo Finance public chart
-API (no API key), caches them ~60s, and prints one line. `manage.py` edits the
-watchlist (validates symbols against the same API before adding). Symbols use
-Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
+3. **There is exactly one quote fetcher.** All quotes go through
+   `common.get_quotes()`, backed by a single per-symbol cache (`cache.json`,
+   60s TTL). `statusline.py` and `monitor.py` both call it, so a symbol is
+   fetched at most once per TTL across both — never add a separate API call /
+   poll loop in either; extend `get_quotes()` instead.
+
+`seekerizer` data flow:
+- `statusline.py` (the status line command) reads the watchlist + targets via
+  `common.py`, gets quotes through the shared `get_quotes()`, prints one line,
+  and shows a 🔔 next to any symbol whose target is touched. It labels each
+  entry with the company name (`common.display_name`, suffix-trimmed) rather
+  than the raw symbol — Korean tickers are numeric — and colors it red on a gain
+  / blue on a loss (Korean convention). The name rides along in `get_quotes()`'s
+  cached entry, so there is no extra request for it. Label priority is
+  alias → company name → symbol; a user alias (`aliases.json`, e.g. a Korean
+  name) is set via `manage.py alias`.
+- `manage.py` also handles deletion: `remove` drops a ticker and its alias and
+  warns if a price target lingers; `alias`/`unalias` edit `aliases.json`.
+- `monitor.py` is the plugin's background **monitor** (registered under
+  `experimental.monitors` in `plugin.json`; Claude Code runs it as a persistent
+  per-session process). It polls the watchlist∪targets via the same
+  `get_quotes()` (keeping the cache warm for the status line), and when a target
+  is touched prints an alert line — each stdout line reaches Claude as a
+  notification. A touched target is marked `fired` (one-shot) until re-set.
+- `manage.py` edits the watchlist; `targets.py` edits price targets
+  (`targets.json`), auto-detecting direction (above/below) from the current
+  price. Both validate symbols against Yahoo before saving.
+
+Symbols use Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
+Monitors are **experimental** and only run while a session is open (no alerts
+when Claude Code is closed).
 
 ## Local development & testing
 

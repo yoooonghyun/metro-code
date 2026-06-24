@@ -1,21 +1,20 @@
 ---
 name: add-symbol
 description: >-
-  Add, remove, list, or clear the stocks shown in the Claude Code inline status
-  line. Use when the user mentions stocks/quotes/watchlist — e.g. "add AAPL to
-  my ticker", "remove TSLA", "show my watchlist", "clear stocks" (also matches
-  Korean requests such as "삼성전자 추가", "테슬라 빼줘", "추적 중인 종목 보여줘").
+  Add a stock to the Claude Code status-line watchlist. Use when the user wants
+  to track/add a stock — e.g. "add AAPL", "track Tesla", "watch NVDA" (also
+  Korean: "삼성전자 추가해줘", "테슬라 담아줘"). To remove use the remove-symbol
+  skill; for a custom label use alias-symbol.
 ---
 
-# Seekerizer — watchlist management
+# Seekerizer — add a symbol
 
-Manage the watchlist that the status line renders inline at the bottom of Claude
-Code. The watchlist is stored in the plugin's persistent data dir and edited
-through `manage.py`.
+Add one or more symbols to the watchlist rendered in the status line. The
+watchlist lives in the plugin's persistent data dir and is edited through
+`manage.py`.
 
-> If the status line isn't showing yet, the user needs to run the setup skill
-> once: `/seekerizer:setup`. Mention this if they ask "why don't
-> I see any prices".
+> If the status line isn't showing yet, run the setup skill once
+> (`/seekerizer:setup`). Mention this if the user asks "why don't I see prices".
 
 ## Symbol format (Yahoo Finance notation)
 
@@ -30,32 +29,21 @@ through `manage.py`.
 Map company names to symbols, including Korean names the user may say:
 Samsung Electronics / 삼성전자 → `005930.KS`, SK hynix / SK하이닉스 →
 `000660.KS`, Apple / 애플 → `AAPL`, Tesla / 테슬라 → `TSLA`, NVIDIA / 엔비디아 →
-`NVDA`. If unsure of the exact code, ask the user to confirm before adding.
+`NVDA`. If unsure of the exact code, confirm with the user before adding.
 
-## Commands
+## Command
 
-Run with the plugin's bundled script. `add` validates each symbol against the
-Yahoo Finance API before saving and prints the resolved company name.
+`add` validates each symbol against the Yahoo Finance API before saving and
+prints the resolved company name.
 
 ```bash
-# Add one or more tickers
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" add AAPL 005930.KS
-
-# Remove tickers
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" remove TSLA
-
-# List the current watchlist
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" list
-
-# Clear everything
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" clear
 ```
 
 ## Workflow
 
 1. Resolve the Yahoo symbol(s) from what the user said (confirm if ambiguous).
-2. Run the appropriate `manage.py` command.
-3. Report the result. If `add` printed "Validation failed", the symbol was
-   rejected — double-check the code with the user.
-4. The status line refreshes on its own; a new quote appears within ~60s (the
-   quote cache window). No restart needed.
+2. Run `manage.py add ...`.
+3. If it printed "Validation failed", the symbol was rejected — double-check the
+   code with the user. The status line picks up the new quote within ~60s; no
+   restart needed.

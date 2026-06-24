@@ -34,18 +34,20 @@ Code.
 
 ### `seekerizer` — inline stock price ticker
 
-Shows your watchlist inline in the Claude Code status line, and lets you manage
-it in natural language. Quotes come from the Yahoo Finance public API — **no API
-key required**. Supports US, Korean (KOSPI/KOSDAQ), Tokyo, and other markets,
-plus crypto.
+Shows your watchlist inline in the Claude Code status line, lets you manage it
+in natural language, and alerts you when a stock touches a target price. Quotes
+come from the Yahoo Finance public API — **no API key required**. Supports US,
+Korean (KOSPI/KOSDAQ), Tokyo, and other markets, plus crypto.
 
 ```
-📈 AAPL $294.30 ▼0.91%  │  TSLA $381.61 ▼5.79%  │  005930.KS ₩310,000 ▼12.31%
+📈 Apple $294.30 ▼0.91%  │  🔔 Tesla $381.61 ▼5.79%  │  Samsung Electronics ₩310,000 ▼12.31%
 ```
 
-- **Add/remove stocks by talking to Claude** (English or Korean): "add NVDA",
+- **Manage by talking to Claude** (English or Korean): "add NVDA",
   "remove TSLA", "show my watchlist".
-- Watchlist persists across plugin updates.
+- **Price-target alerts**: "alert me when AAPL hits $300" — a background monitor
+  notifies you (and shows 🔔) when the price is touched.
+- Watchlist and targets persist across plugin updates.
 
 See [`plugins/seekerizer/README.md`](plugins/seekerizer/README.md) for details.
 
@@ -59,9 +61,14 @@ metro-code/
     └── seekerizer/                 # the plugin
         ├── .claude-plugin/plugin.json
         ├── scripts/                # python (stdlib only)
-        ├── skills/
-        │   ├── add-symbol/         # manage watchlist (/seekerizer:add-symbol)
-        │   └── setup/              # one-time status line install (/seekerizer:setup)
+        ├── skills/                 # one skill per action
+        │   ├── add-symbol/         # add a stock
+        │   ├── remove-symbol/      # remove / clear stocks
+        │   ├── alias-symbol/       # custom display label (e.g. Korean)
+        │   ├── list-symbols/       # show watchlist & targets
+        │   ├── set-target/         # price-target alerts
+        │   ├── setup/              # one-time status line install
+        │   └── update/             # update the plugin to the latest version
         └── README.md
 ```
 
