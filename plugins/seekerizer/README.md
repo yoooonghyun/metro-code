@@ -22,11 +22,11 @@ afterward.
 
 ## Usage
 
-Talk to Claude — the `seekerizer` skill handles it:
+Talk to Claude — the `add-symbol` skill handles it (English or Korean):
 
-- "삼성전자 종목 추가해줘" / "add NVDA to my watchlist"
-- "테슬라 빼줘" / "remove TSLA"
-- "추적 중인 종목 보여줘" / "show my watchlist"
+- "add NVDA to my watchlist" / "삼성전자 종목 추가해줘"
+- "remove TSLA" / "테슬라 빼줘"
+- "show my watchlist" / "추적 중인 종목 보여줘"
 
 Or call the scripts directly:
 
@@ -41,11 +41,11 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 
 | Market    | Example                |
 |-----------|------------------------|
-| 미국 주식 | `AAPL`, `TSLA`, `NVDA` |
-| 코스피    | `005930.KS` (삼성전자) |
-| 코스닥    | `035720.KQ`            |
-| 암호화폐  | `BTC-USD`              |
-| 도쿄      | `7203.T`               |
+| US stock  | `AAPL`, `TSLA`, `NVDA` |
+| KOSPI     | `005930.KS` (Samsung)  |
+| KOSDAQ    | `035720.KQ`            |
+| Crypto    | `BTC-USD`              |
+| Tokyo     | `7203.T`               |
 
 ## How it works
 

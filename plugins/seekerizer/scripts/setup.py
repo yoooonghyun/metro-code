@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Install (or remove) the seekerizer status line in a Claude Code settings file.
 
-The plugin already bundles a settings.json with a `statusLine` entry, but a
-plugin cannot force the top-level status line — if a user already has their own
-status line, or it isn't taking effect, this writes the entry directly into
-their settings so it reliably shows up.
+A Claude Code plugin cannot register the top-level `statusLine` itself: a
+plugin's bundled settings.json only supports the `agent` and
+`subagentStatusLine` keys. So this script writes the `statusLine` entry directly
+into the user's settings to enable the inline ticker.
 
 Usage:
     setup.py [--global | --project] [--remove] [--status-only]
@@ -60,29 +60,29 @@ def main(argv):
     current = settings.get("statusLine")
 
     if "--status-only" in argv:
-        print(f"설정 파일: {path}")
+        print(f"Settings file: {path}")
         if current is None:
-            print("statusLine: (없음)")
+            print("statusLine: (none)")
         elif is_ours(current):
-            print("statusLine: seekerizer (설치됨)")
+            print("statusLine: seekerizer (installed)")
         else:
-            print(f"statusLine: 다른 항목이 설정되어 있음 -> {json.dumps(current, ensure_ascii=False)}")
+            print(f"statusLine: a different entry is set -> {json.dumps(current, ensure_ascii=False)}")
         return 0
 
     if "--remove" in argv:
         if is_ours(current):
             del settings["statusLine"]
             save_settings(path, settings)
-            print(f"제거됨: {path} 의 seekerizer status line")
+            print(f"Removed: seekerizer status line from {path}")
         else:
-            print("seekerizer status line이 설정되어 있지 않습니다. 변경 없음.")
+            print("No seekerizer status line is configured. No change.")
         return 0
 
     # Install.
     if current is not None and not is_ours(current):
-        print(f"경고: {path} 에 이미 다른 statusLine이 있습니다:")
+        print(f"Warning: {path} already has a different statusLine:")
         print(f"  {json.dumps(current, ensure_ascii=False)}")
-        print("덮어쓰려면 먼저 해당 설정을 확인하세요. (중단)")
+        print("Review that setting before overwriting. (aborted)")
         return 1
 
     settings["statusLine"] = {
@@ -91,9 +91,9 @@ def main(argv):
         "padding": 0,
     }
     save_settings(path, settings)
-    print(f"설치 완료: {path}")
+    print(f"Installed: {path}")
     print(f"  statusLine -> python3 \"{STATUSLINE_SCRIPT}\"")
-    print("새 세션을 시작하면 하단에 시세가 표시됩니다.")
+    print("Start a new session to see quotes at the bottom of Claude Code.")
     return 0
 
 

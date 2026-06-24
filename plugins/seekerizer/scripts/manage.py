@@ -46,9 +46,9 @@ def validate(symbol):
 def cmd_list():
     tickers = load_tickers()
     if not tickers:
-        print("추적 중인 종목이 없습니다.")
+        print("No symbols tracked.")
         return
-    print("추적 중인 종목:")
+    print("Tracked symbols:")
     for t in tickers:
         print(f"  - {t}")
 
@@ -60,14 +60,14 @@ def cmd_add(symbols):
         if not sym:
             continue
         if sym in tickers:
-            print(f"이미 추가됨: {sym}")
+            print(f"Already tracked: {sym}")
             continue
         ok, name = validate(sym)
         if not ok:
-            print(f"확인 실패(유효하지 않은 심볼일 수 있음): {sym}")
+            print(f"Validation failed (symbol may not exist): {sym}")
             continue
         tickers.append(sym)
-        print(f"추가됨: {sym}  ({name})")
+        print(f"Added: {sym}  ({name})")
     save_tickers(tickers)
 
 
@@ -77,15 +77,15 @@ def cmd_remove(symbols):
     removed = [t for t in tickers if t.upper() in targets]
     kept = [t for t in tickers if t.upper() not in targets]
     for t in removed:
-        print(f"삭제됨: {t}")
+        print(f"Removed: {t}")
     if not removed:
-        print("일치하는 종목이 없습니다.")
+        print("No matching symbols.")
     save_tickers(kept)
 
 
 def cmd_clear():
     save_tickers([])
-    print("모든 종목을 삭제했습니다.")
+    print("Cleared all symbols.")
 
 
 def main(argv):
@@ -97,12 +97,12 @@ def main(argv):
         cmd_list()
     elif cmd == "add":
         if not rest:
-            print("사용법: manage.py add <SYMBOL> ...")
+            print("Usage: manage.py add <SYMBOL> ...")
             return 1
         cmd_add(rest)
     elif cmd == "remove":
         if not rest:
-            print("사용법: manage.py remove <SYMBOL> ...")
+            print("Usage: manage.py remove <SYMBOL> ...")
             return 1
         cmd_remove(rest)
     elif cmd == "clear":
