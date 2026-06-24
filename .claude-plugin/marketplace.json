@@ -8,8 +8,8 @@
   "description": "Claude Code plugins by yoooonghyun.",
   "plugins": [
     {
-      "name": "stock-alerts",
-      "source": "./plugins/stock-alerts",
+      "name": "seekerizer",
+      "source": "./plugins/seekerizer",
       "description": "Inline stock price ticker for the Claude Code status line, with skill-based watchlist management. Quotes from Yahoo Finance (no API key).",
       "version": "1.0.0",
       "author": {

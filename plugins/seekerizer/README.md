@@ -1,4 +1,4 @@
-# stock-alerts
+# seekerizer
 
 Inline stock price ticker for the Claude Code **status line**, with skill-based
 watchlist management. Quotes from the Yahoo Finance public API — **no API key**.
@@ -11,8 +11,8 @@ watchlist management. Quotes from the Yahoo Finance public API — **no API key*
 
 ```text
 /plugin marketplace add yoooonghyun/metro-code
-/plugin install stock-alerts@metro-code
-/stock-alerts:setup
+/plugin install seekerizer@metro-code
+/seekerizer:setup
 ```
 
 The setup step is required once: a plugin cannot register the top-level
@@ -22,7 +22,7 @@ afterward.
 
 ## Usage
 
-Talk to Claude — the `stock-alerts` skill handles it:
+Talk to Claude — the `seekerizer` skill handles it:
 
 - "삼성전자 종목 추가해줘" / "add NVDA to my watchlist"
 - "테슬라 빼줘" / "remove TSLA"
@@ -55,13 +55,13 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 | `scripts/manage.py` | add/remove/list/clear, validates symbols |
 | `scripts/setup.py` | install/remove the status line in your settings |
 | `scripts/common.py` | shared paths/helpers |
-| `skills/add-symbol/` | natural-language watchlist management (`/stock-alerts:add-symbol`) |
-| `skills/setup/` | one-time status line setup (`/stock-alerts:setup`) |
+| `skills/add-symbol/` | natural-language watchlist management (`/seekerizer:add-symbol`) |
+| `skills/setup/` | one-time status line setup (`/seekerizer:setup`) |
 
 - **Data location**: the watchlist (`tickers.json`) and quote cache
   (`cache.json`) live in the plugin's persistent data dir
-  (`$CLAUDE_PLUGIN_DATA`, falling back to `~/.claude/stock-alerts`), so they
-  **survive plugin updates**. Override with `$STOCK_ALERTS_DATA_DIR`.
+  (`$CLAUDE_PLUGIN_DATA`, falling back to `~/.claude/seekerizer`), so they
+  **survive plugin updates**. Override with `$SEEKERIZER_DATA_DIR`.
 - **Quotes**: Yahoo Finance chart API, cached 60s to keep the status line fast.
 - **Currency**: `.KS`/`.KQ` → ₩, `.T` → ¥, `.L` → £, `.HK` → HK$, else $.
 
@@ -71,7 +71,7 @@ The watchlist persists, but the plugin's script path changes, so re-run setup
 once:
 
 ```text
-/stock-alerts:setup
+/seekerizer:setup
 ```
 
 ## Requirements

@@ -1,14 +1,14 @@
 ---
 name: setup
 description: >-
-  One-time setup for the stock-alerts plugin: install the stock price status
+  One-time setup for the seekerizer plugin: install the stock price status
   line into the user's Claude Code settings. Use right after installing the
   plugin, or when the user says "주식 시세 status line 설정/설치해줘",
-  "show stock prices in my status bar", "set up stock-alerts",
+  "show stock prices in my status bar", "set up seekerizer",
   "status line이 안 보여" (status line not showing).
 ---
 
-# Stock Alerts — setup
+# Seekerizer — setup
 
 Claude Code plugins can't register the top-level `statusLine` on their own, so
 this skill writes it into the user's settings once. After this, the inline stock
@@ -60,4 +60,4 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --remove
 - Note that if they later **update the plugin**, the script path changes, so
   they should re-run this setup once. (The watchlist itself persists across
   updates.)
-- Day-to-day watchlist changes use the `stock-alerts` skill, not this one.
+- Day-to-day watchlist changes use the `seekerizer` skill, not this one.

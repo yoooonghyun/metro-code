@@ -7,14 +7,14 @@ description: >-
   "add AAPL to my ticker", "show my watchlist", "clear stocks".
 ---
 
-# Stock Alerts — watchlist management
+# Seekerizer — watchlist management
 
 Manage the watchlist that the status line renders inline at the bottom of Claude
 Code. The watchlist is stored in the plugin's persistent data dir and edited
 through `manage.py`.
 
 > If the status line isn't showing yet, the user needs to run the setup skill
-> once: `/stock-alerts:setup`. Mention this if they ask "why don't
+> once: `/seekerizer:setup`. Mention this if they ask "why don't
 > I see any prices".
 
 ## Symbol format (Yahoo Finance notation)

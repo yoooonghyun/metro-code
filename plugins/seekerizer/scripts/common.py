@@ -1,4 +1,4 @@
-"""Shared helpers for the stock-alerts plugin scripts.
+"""Shared helpers for the seekerizer plugin scripts.
 
 Resolves where the watchlist and quote cache live. We deliberately avoid
 storing them inside the plugin directory: ${CLAUDE_PLUGIN_ROOT} changes on every
@@ -6,9 +6,9 @@ plugin update, which would wipe the user's watchlist. ${CLAUDE_PLUGIN_DATA}
 persists across updates and is the right home for user state.
 
 Resolution order:
-    1. $STOCK_ALERTS_DATA_DIR   (explicit override, e.g. for testing)
+    1. $SEEKERIZER_DATA_DIR   (explicit override, e.g. for testing)
     2. $CLAUDE_PLUGIN_DATA      (per-plugin persistent dir, set by Claude Code)
-    3. ~/.claude/stock-alerts   (fallback when run outside a plugin context)
+    3. ~/.claude/seekerizer   (fallback when run outside a plugin context)
 """
 import json
 import os
@@ -18,9 +18,9 @@ SUFFIX_CURRENCY = {".KS": "₩", ".KQ": "₩", ".T": "¥", ".L": "£", ".HK": "H
 
 def data_dir():
     base = (
-        os.environ.get("STOCK_ALERTS_DATA_DIR")
+        os.environ.get("SEEKERIZER_DATA_DIR")
         or os.environ.get("CLAUDE_PLUGIN_DATA")
-        or os.path.expanduser("~/.claude/stock-alerts")
+        or os.path.expanduser("~/.claude/seekerizer")
     )
     os.makedirs(base, exist_ok=True)
     return base

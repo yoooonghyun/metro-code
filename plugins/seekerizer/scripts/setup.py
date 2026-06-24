@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install (or remove) the stock-alerts status line in a Claude Code settings file.
+"""Install (or remove) the seekerizer status line in a Claude Code settings file.
 
 The plugin already bundles a settings.json with a `statusLine` entry, but a
 plugin cannot force the top-level status line — if a user already has their own
@@ -11,7 +11,7 @@ Usage:
 
     --global       Target ~/.claude/settings.json  (default)
     --project      Target ./.claude/settings.json  (current repo only)
-    --remove       Remove the stock-alerts status line again
+    --remove       Remove the seekerizer status line again
     --status-only  Don't install; just report current state
 
 Existing settings are preserved (merged); only the `statusLine` key is touched.
@@ -64,7 +64,7 @@ def main(argv):
         if current is None:
             print("statusLine: (없음)")
         elif is_ours(current):
-            print("statusLine: stock-alerts (설치됨)")
+            print("statusLine: seekerizer (설치됨)")
         else:
             print(f"statusLine: 다른 항목이 설정되어 있음 -> {json.dumps(current, ensure_ascii=False)}")
         return 0
@@ -73,9 +73,9 @@ def main(argv):
         if is_ours(current):
             del settings["statusLine"]
             save_settings(path, settings)
-            print(f"제거됨: {path} 의 stock-alerts status line")
+            print(f"제거됨: {path} 의 seekerizer status line")
         else:
-            print("stock-alerts status line이 설정되어 있지 않습니다. 변경 없음.")
+            print("seekerizer status line이 설정되어 있지 않습니다. 변경 없음.")
         return 0
 
     # Install.

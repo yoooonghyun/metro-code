@@ -10,20 +10,20 @@ In Claude Code:
 
 ```text
 /plugin marketplace add yoooonghyun/metro-code
-/plugin install stock-alerts@metro-code
+/plugin install seekerizer@metro-code
 ```
 
 Then run the one-time setup so the status line shows up:
 
 ```text
-/stock-alerts:setup
+/seekerizer:setup
 ```
 
 Start a new session and you'll see live quotes at the bottom of Claude Code.
 
 ## Plugins
 
-### `stock-alerts` — inline stock price ticker
+### `seekerizer` — inline stock price ticker
 
 Shows your watchlist inline in the Claude Code status line, and lets you manage
 it in natural language. Quotes come from the Yahoo Finance public API — **no API
@@ -38,7 +38,7 @@ crypto.
   "테슬라 빼줘", "추적 중인 종목 보여줘", "add NVDA".
 - Watchlist persists across plugin updates.
 
-See [`plugins/stock-alerts/README.md`](plugins/stock-alerts/README.md) for
+See [`plugins/seekerizer/README.md`](plugins/seekerizer/README.md) for
 details.
 
 ## Repository layout
@@ -48,11 +48,11 @@ metro-code/
 ├── .claude-plugin/
 │   └── marketplace.json          # marketplace catalog
 └── plugins/
-    └── stock-alerts/             # the plugin
+    └── seekerizer/             # the plugin
         ├── .claude-plugin/plugin.json
         ├── scripts/              # python (stdlib only)
         ├── skills/
-        │   ├── add-symbol/   # manage watchlist (/stock-alerts:add-symbol)
-        │   └── setup/    # one-time status line install (/stock-alerts:setup)
+        │   ├── add-symbol/   # manage watchlist (/seekerizer:add-symbol)
+        │   └── setup/    # one-time status line install (/seekerizer:setup)
         └── README.md
 ```
