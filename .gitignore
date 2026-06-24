@@ -1,0 +1,4 @@
+# Runtime quote cache for the stock status line
+.claude/stock-alerts/cache.json
+__pycache__/
+*.pyc
