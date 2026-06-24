@@ -2,10 +2,10 @@
 """Manage the tracked stock tickers used by the status line.
 
 Usage:
-    stock_manage.py list
-    stock_manage.py add <SYMBOL> [<SYMBOL> ...]
-    stock_manage.py remove <SYMBOL> [<SYMBOL> ...]
-    stock_manage.py clear
+    manage.py list
+    manage.py add <SYMBOL> [<SYMBOL> ...]
+    manage.py remove <SYMBOL> [<SYMBOL> ...]
+    manage.py clear
 
 Symbols use Yahoo Finance notation:
     AAPL          Apple (US)
@@ -22,7 +22,7 @@ import urllib.error
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_tickers, save_tickers  # noqa: E402
+from common import load_tickers, save_tickers  # noqa: E402
 
 
 def validate(symbol):
@@ -97,12 +97,12 @@ def main(argv):
         cmd_list()
     elif cmd == "add":
         if not rest:
-            print("사용법: stock_manage.py add <SYMBOL> ...")
+            print("사용법: manage.py add <SYMBOL> ...")
             return 1
         cmd_add(rest)
     elif cmd == "remove":
         if not rest:
-            print("사용법: stock_manage.py remove <SYMBOL> ...")
+            print("사용법: manage.py remove <SYMBOL> ...")
             return 1
         cmd_remove(rest)
     elif cmd == "clear":

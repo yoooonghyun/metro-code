@@ -1,5 +1,5 @@
 ---
-name: add-stock
+name: add-symbol
 description: >-
   Add, remove, list, or clear the stocks shown in the Claude Code inline status
   line. Use when the user mentions stocks/quotes/watchlist — e.g. "주식 종목
@@ -11,7 +11,7 @@ description: >-
 
 Manage the watchlist that the status line renders inline at the bottom of Claude
 Code. The watchlist is stored in the plugin's persistent data dir and edited
-through `stock_manage.py`.
+through `manage.py`.
 
 > If the status line isn't showing yet, the user needs to run the setup skill
 > once: `/stock-alerts:setup`. Mention this if they ask "why don't
@@ -38,22 +38,22 @@ Yahoo Finance API before saving and prints the resolved company name.
 
 ```bash
 # Add one or more tickers
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_manage.py" add AAPL 005930.KS
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" add AAPL 005930.KS
 
 # Remove tickers
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_manage.py" remove TSLA
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" remove TSLA
 
 # List the current watchlist
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_manage.py" list
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" list
 
 # Clear everything
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_manage.py" clear
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" clear
 ```
 
 ## Workflow
 
 1. Resolve the Yahoo symbol(s) from what the user said (confirm if ambiguous).
-2. Run the appropriate `stock_manage.py` command.
+2. Run the appropriate `manage.py` command.
 3. Report the result. If `add` printed "확인 실패", the symbol was rejected —
    double-check the code with the user.
 4. The status line refreshes on its own; a new quote appears within ~60s (the

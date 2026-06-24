@@ -21,7 +21,7 @@ import os
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-STATUSLINE_SCRIPT = os.path.join(SCRIPT_DIR, "stock_statusline.py")
+STATUSLINE_SCRIPT = os.path.join(SCRIPT_DIR, "statusline.py")
 
 
 def target_path(scope):
@@ -49,7 +49,7 @@ def save_settings(path, settings):
 def is_ours(statusline):
     return (
         isinstance(statusline, dict)
-        and "stock_statusline.py" in str(statusline.get("command", ""))
+        and "statusline.py" in str(statusline.get("command", ""))
     )
 
 

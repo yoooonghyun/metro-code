@@ -21,7 +21,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --global
 ```
 
 This adds a `statusLine` entry to `~/.claude/settings.json` pointing at the
-plugin's `stock_statusline.py`. Existing settings are preserved (merged); only
+plugin's `statusline.py`. Existing settings are preserved (merged); only
 the `statusLine` key is added. If the user already has a different status line,
 the script stops and reports it instead of overwriting — relay that and ask how
 they want to proceed.
@@ -36,7 +36,7 @@ To install for the current project only, use `--project` (writes to
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --status-only
 
 # Quick render test (prints exactly what the status line will show)
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_statusline.py" < /dev/null
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/statusline.py" < /dev/null
 ```
 
 ## Seed an initial watchlist (optional)
@@ -44,7 +44,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_statusline.py" < /dev/null
 If the watchlist is empty, offer to add a couple of starters:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/stock_manage.py" add AAPL 005930.KS
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/manage.py" add AAPL 005930.KS
 ```
 
 ## Uninstall the status line

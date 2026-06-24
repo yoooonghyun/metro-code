@@ -31,10 +31,10 @@ Talk to Claude — the `stock-alerts` skill handles it:
 Or call the scripts directly:
 
 ```bash
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" add AAPL 005930.KS
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" remove TSLA
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" list
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" clear
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" add AAPL 005930.KS
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" remove TSLA
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" list
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 ```
 
 ### Symbol format (Yahoo Finance notation)
@@ -51,11 +51,11 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/stock_manage.py" clear
 
 | File | Role |
 |------|------|
-| `scripts/stock_statusline.py` | status line command: fetch + render (60s cache) |
-| `scripts/stock_manage.py` | add/remove/list/clear, validates symbols |
+| `scripts/statusline.py` | status line command: fetch + render (60s cache) |
+| `scripts/manage.py` | add/remove/list/clear, validates symbols |
 | `scripts/setup.py` | install/remove the status line in your settings |
-| `scripts/_common.py` | shared paths/helpers |
-| `skills/add-stock/` | natural-language watchlist management (`/stock-alerts:add-stock`) |
+| `scripts/common.py` | shared paths/helpers |
+| `skills/add-symbol/` | natural-language watchlist management (`/stock-alerts:add-symbol`) |
 | `skills/setup/` | one-time status line setup (`/stock-alerts:setup`) |
 
 - **Data location**: the watchlist (`tickers.json`) and quote cache

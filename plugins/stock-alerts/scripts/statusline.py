@@ -15,7 +15,7 @@ import urllib.error
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_tickers, cache_path, currency_for  # noqa: E402
+from common import load_tickers, cache_path, currency_for  # noqa: E402
 
 CACHE_TTL = 60          # seconds before re-fetching quotes
 HTTP_TIMEOUT = 4        # per-request timeout, keep the status line snappy
@@ -108,7 +108,7 @@ def main():
 
     tickers = load_tickers()
     if not tickers:
-        print("📈 추적 중인 종목 없음 — /stock-alerts:add-stock 로 종목을 추가하세요")
+        print("📈 추적 중인 종목 없음 — /stock-alerts:add-symbol 로 종목을 추가하세요")
         return
 
     print(render(tickers, get_quotes(tickers)))
