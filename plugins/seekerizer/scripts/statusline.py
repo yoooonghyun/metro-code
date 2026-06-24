@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
     load_tickers, load_targets, get_quotes, format_price, is_touched,
+    display_name,
 )
 
 SEP = "  │  "
@@ -32,7 +33,7 @@ def render(tickers, quotes, targets):
             parts.append(f"{t} —")
             continue
         price, prev = q["price"], q.get("prev")
-        chunk = f"{t} {format_price(t, price)}"
+        chunk = f"{display_name(t, q)} {format_price(t, price)}"
         color = ""
         if prev:
             pct = (price - prev) / prev * 100

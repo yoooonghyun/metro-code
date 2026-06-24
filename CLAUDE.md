@@ -52,7 +52,11 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
 `seekerizer` data flow:
 - `statusline.py` (the status line command) reads the watchlist + targets via
   `common.py`, gets quotes through the shared `get_quotes()`, prints one line,
-  and shows a 🔔 next to any symbol whose target is touched.
+  and shows a 🔔 next to any symbol whose target is touched. It labels each
+  entry with the company name (`common.display_name`, suffix-trimmed) rather
+  than the raw symbol — Korean tickers are numeric — and colors it red on a gain
+  / blue on a loss (Korean convention). The name rides along in `get_quotes()`'s
+  cached entry, so there is no extra request for it.
 - `monitor.py` is the plugin's background **monitor** (registered under
   `experimental.monitors` in `plugin.json`; Claude Code runs it as a persistent
   per-session process). It polls the watchlist∪targets via the same

@@ -40,7 +40,7 @@ come from the Yahoo Finance public API — **no API key required**. Supports US,
 Korean (KOSPI/KOSDAQ), Tokyo, and other markets, plus crypto.
 
 ```
-📈 AAPL $294.30 ▼0.91%  │  🔔 TSLA $381.61 ▼5.79%  │  005930.KS ₩310,000 ▼12.31%
+📈 Apple $294.30 ▼0.91%  │  🔔 Tesla $381.61 ▼5.79%  │  Samsung Electronics ₩310,000 ▼12.31%
 ```
 
 - **Manage by talking to Claude** (English or Korean): "add NVDA",

@@ -18,7 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
-    load_targets, save_targets, get_quotes, format_price,
+    load_targets, save_targets, get_quotes, format_price, display_name,
 )
 
 
@@ -45,11 +45,12 @@ def cmd_set(args):
     if direction is None:
         direction = "above" if price >= current else "below"
 
+    name = display_name(sym, q)
     targets = load_targets()
-    targets[sym] = {"price": price, "direction": direction, "fired": False}
+    targets[sym] = {"price": price, "direction": direction, "fired": False, "name": name}
     save_targets(targets)
     arrow = "↑" if direction == "above" else "↓"
-    print(f"Target set: {sym} {arrow} {format_price(sym, price)} "
+    print(f"Target set: {name} {arrow} {format_price(sym, price)} "
           f"(now {format_price(sym, current)})")
     return 0
 
@@ -63,7 +64,8 @@ def cmd_list():
     for sym, t in targets.items():
         arrow = "↑" if t["direction"] == "above" else "↓"
         state = "fired" if t.get("fired") else "armed"
-        print(f"  - {sym} {arrow} {format_price(sym, t['price'])}  [{state}]")
+        label = t.get("name") or sym
+        print(f"  - {label} {arrow} {format_price(sym, t['price'])}  [{state}]")
     return 0
 
 

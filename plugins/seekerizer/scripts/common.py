@@ -19,6 +19,7 @@ ${CLAUDE_PLUGIN_ROOT}):
 """
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.error
@@ -123,10 +124,32 @@ def format_price(symbol, price):
     return f"{cur}{price:,.2f}"
 
 
+# Trailing corporate suffixes that just add noise on a status line.
+_SUFFIX_RE = re.compile(
+    r"(?:[,\s]+(?:Co\.,?\s*Ltd\.?|Holdings?|Incorporated|Inc\.?|Corporation|"
+    r"Corp\.?|Company|Limited|Ltd\.?|PLC|plc|S\.A\.|AG|N\.V\.|Group))+$", re.I)
+
+
+def clean_name(name):
+    """Strip corporate suffixes: 'Samsung Electronics Co., Ltd.' -> 'Samsung Electronics'."""
+    out = _SUFFIX_RE.sub("", name).strip(" ,.")
+    return out or name
+
+
+def display_name(symbol, quote=None):
+    """Human-readable label for a symbol — the cleaned company name, else the symbol.
+
+    Korean tickers are numeric (e.g. 005930.KS), so showing the company name
+    makes the status line readable. `quote` is an entry from get_quotes().
+    """
+    name = (quote or {}).get("name")
+    return clean_name(name) if name else symbol
+
+
 # --- quotes (single fetch path + shared cache) -----------------------------
 
 def fetch_quote(symbol):
-    """Raw Yahoo Finance call. Returns (price, prev_close) or None on failure."""
+    """Raw Yahoo Finance call. Returns (price, prev_close, name) or None on failure."""
     url = "https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(symbol)
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
@@ -137,7 +160,11 @@ def fetch_quote(symbol):
         prev = meta.get("chartPreviousClose") or meta.get("previousClose")
         if price is None:
             return None
-        return float(price), float(prev) if prev is not None else None
+        # Prefer longName; shortName is sometimes a junk id string for KOSDAQ.
+        name = meta.get("longName") or meta.get("shortName")
+        if name and symbol.split(".")[0] in name:
+            name = None
+        return float(price), float(prev) if prev is not None else None, name
     except (urllib.error.URLError, KeyError, IndexError, ValueError, TypeError):
         return None
 
@@ -163,16 +190,18 @@ def get_quotes(symbols, ttl=CACHE_TTL):
     for s in symbols:
         c = cache.get(s)
         if c and (now - c.get("ts", 0)) < ttl and "price" in c:
-            out[s] = {"price": c["price"], "prev": c.get("prev")}
+            out[s] = {"price": c["price"], "prev": c.get("prev"), "name": c.get("name")}
             continue
         q = fetch_quote(s)
         if q is not None:
-            price, prev = q
-            cache[s] = {"price": price, "prev": prev, "ts": now}
-            out[s] = {"price": price, "prev": prev}
+            price, prev, name = q
+            # Keep a previously known name if this response omitted one.
+            name = name or (c or {}).get("name")
+            cache[s] = {"price": price, "prev": prev, "name": name, "ts": now}
+            out[s] = {"price": price, "prev": prev, "name": name}
             changed = True
         elif c and "price" in c:
-            out[s] = {"price": c["price"], "prev": c.get("prev")}
+            out[s] = {"price": c["price"], "prev": c.get("prev"), "name": c.get("name")}
     if changed:
         _atomic_write(cache_path(), cache)
     return out

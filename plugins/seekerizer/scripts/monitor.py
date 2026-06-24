@@ -22,7 +22,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
     load_tickers, load_targets, save_targets, get_quotes, format_price,
-    is_touched, CACHE_TTL,
+    is_touched, display_name, CACHE_TTL,
 )
 
 POLL_INTERVAL = CACHE_TTL  # align polling with cache freshness
@@ -50,7 +50,7 @@ def check_once():
         price = q["price"]
         if is_touched(t, price):
             arrow = "↑" if t["direction"] == "above" else "↓"
-            print(f"🔔 seekerizer alert: {sym} touched target "
+            print(f"🔔 seekerizer alert: {display_name(sym, q)} touched target "
                   f"{arrow} {format_price(sym, t['price'])} "
                   f"(now {format_price(sym, price)})", flush=True)
             targets[sym]["fired"] = True

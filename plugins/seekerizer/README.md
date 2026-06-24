@@ -5,7 +5,7 @@ watchlist management and **price-target alerts**. Quotes from the Yahoo Finance
 public API — **no API key**.
 
 ```
-📈 AAPL $294.30 ▼0.91%  │  TSLA $381.61 ▼5.79%  │  005930.KS ₩310,000 ▼12.31%
+📈 Apple $294.30 ▼0.91%  │  Tesla $381.61 ▼5.79%  │  Samsung Electronics ₩310,000 ▼12.31%
 ```
 
 ## Install
@@ -74,6 +74,10 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
   symbol is fetched at most once per TTL across both.
 - **Currency**: `.KS`/`.KQ` → ₩, `.T` → ¥, `.L` → £, `.HK` → HK$, else $.
 - **Colors**: gains are shown red and losses blue (Korean market convention).
+- **Labels**: the status line shows the company name (e.g. `Samsung Electronics`
+  for `005930.KS`) instead of the raw symbol, since Korean tickers are numeric.
+  The name comes from the same quote fetch (no extra API call) and corporate
+  suffixes like "Co., Ltd."/"Inc." are trimmed.
 
 ## Price-target alerts
 
