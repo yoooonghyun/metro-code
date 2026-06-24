@@ -1,58 +1,58 @@
-# metro-code
+# metro-code — Claude Code plugin marketplace
 
-Claude Code용 **인라인 주식 시세 알리미**. Claude Code 하단 status line에 관심
-종목의 실시간 시세를 보여주고, skill을 통해 자연어로 종목을 추가/삭제할 수 있습니다.
+A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces).
+Anyone can add this repo as a marketplace and install the plugins below into
+their own Claude Code.
+
+## Install
+
+In Claude Code:
+
+```text
+/plugin marketplace add yoooonghyun/metro-code
+/plugin install seekerizer@metro-code
+```
+
+Then run the one-time setup so the status line shows up:
+
+```text
+/seekerizer:setup
+```
+
+Start a new session and you'll see live quotes at the bottom of Claude Code.
+
+## Plugins
+
+### `seekerizer` — inline stock price ticker
+
+Shows your watchlist inline in the Claude Code status line, and lets you manage
+it in natural language. Quotes come from the Yahoo Finance public API — **no API
+key required**. Supports US, Korean (KOSPI/KOSDAQ), and other markets, plus
+crypto.
 
 ```
 📈 AAPL $294.30 ▼0.91%  │  TSLA $381.61 ▼5.79%  │  005930.KS ₩310,000 ▼12.31%
 ```
 
-## 구성
+- **Add/remove stocks by talking to Claude**: "삼성전자 추가해줘",
+  "테슬라 빼줘", "추적 중인 종목 보여줘", "add NVDA".
+- Watchlist persists across plugin updates.
 
-| 경로 | 역할 |
-|------|------|
-| `.claude/settings.json` | status line 명령 등록 |
-| `.claude/scripts/stock_statusline.py` | 시세 조회 + 인라인 출력 (60초 캐시) |
-| `.claude/scripts/stock_manage.py` | 종목 추가/삭제/조회 CLI |
-| `.claude/skills/stock-alerts/SKILL.md` | "종목 추가해줘" 등 자연어 트리거 |
-| `.claude/stock-alerts/tickers.json` | 추적 종목 목록 |
+See [`plugins/seekerizer/README.md`](plugins/seekerizer/README.md) for
+details.
 
-시세는 Yahoo Finance 공개 API에서 가져오므로 **API 키가 필요 없습니다**.
-미국·한국 주식과 암호화폐를 지원합니다.
+## Repository layout
 
-## 사용법
-
-### skill로 (권장)
-
-Claude Code 대화창에서 자연어로 요청하면 됩니다.
-
-- "삼성전자 종목 추가해줘"
-- "테슬라 빼줘"
-- "추적 중인 종목 보여줘"
-
-### CLI로 직접
-
-```bash
-python3 .claude/scripts/stock_manage.py add AAPL 005930.KS
-python3 .claude/scripts/stock_manage.py remove TSLA
-python3 .claude/scripts/stock_manage.py list
-python3 .claude/scripts/stock_manage.py clear
 ```
-
-### 심볼 표기 (Yahoo Finance 형식)
-
-| 시장 | 예시 |
-|------|------|
-| 미국 주식 | `AAPL`, `TSLA` |
-| 코스피 | `005930.KS` (삼성전자) |
-| 코스닥 | `035720.KQ` |
-| 암호화폐 | `BTC-USD` |
-| 도쿄 | `7203.T` |
-
-## 요구 사항
-
-- `python3` (표준 라이브러리만 사용 — 추가 설치 불필요)
-- 시세 조회를 위한 인터넷 연결
-
-> 변경 사항을 적용하려면 Claude Code를 재시작하거나 새 세션을 시작하세요
-> (status line 설정과 skill은 세션 시작 시 로드됩니다).
+metro-code/
+├── .claude-plugin/
+│   └── marketplace.json          # marketplace catalog
+└── plugins/
+    └── seekerizer/             # the plugin
+        ├── .claude-plugin/plugin.json
+        ├── scripts/              # python (stdlib only)
+        ├── skills/
+        │   ├── add-symbol/   # manage watchlist (/seekerizer:add-symbol)
+        │   └── setup/    # one-time status line install (/seekerizer:setup)
+        └── README.md
+```

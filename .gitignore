@@ -1,4 +1,3 @@
-# Runtime quote cache for the stock status line
-.claude/stock-alerts/cache.json
+# Runtime files (quote cache / watchlist live in the persistent data dir, not the repo)
 __pycache__/
 *.pyc

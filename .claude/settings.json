@@ -1,7 +1,0 @@
-{
-  "statusLine": {
-    "type": "command",
-    "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/scripts/stock_statusline.py\"",
-    "padding": 0
-  }
-}
