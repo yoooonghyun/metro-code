@@ -56,7 +56,11 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
   entry with the company name (`common.display_name`, suffix-trimmed) rather
   than the raw symbol — Korean tickers are numeric — and colors it red on a gain
   / blue on a loss (Korean convention). The name rides along in `get_quotes()`'s
-  cached entry, so there is no extra request for it.
+  cached entry, so there is no extra request for it. Label priority is
+  alias → company name → symbol; a user alias (`aliases.json`, e.g. a Korean
+  name) is set via `manage.py alias`.
+- `manage.py` also handles deletion: `remove` drops a ticker and its alias and
+  warns if a price target lingers; `alias`/`unalias` edit `aliases.json`.
 - `monitor.py` is the plugin's background **monitor** (registered under
   `experimental.monitors` in `plugin.json`; Claude Code runs it as a persistent
   per-session process). It polls the watchlist∪targets via the same

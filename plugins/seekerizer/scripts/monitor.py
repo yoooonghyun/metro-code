@@ -21,8 +21,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
-    load_tickers, load_targets, save_targets, get_quotes, format_price,
-    is_touched, display_name, CACHE_TTL,
+    load_tickers, load_targets, save_targets, load_aliases, get_quotes,
+    format_price, is_touched, display_name, CACHE_TTL,
 )
 
 POLL_INTERVAL = CACHE_TTL  # align polling with cache freshness
@@ -41,6 +41,7 @@ def check_once():
     # One fetch pass over everything we care about (shared cache dedupes).
     symbols = sorted(set(load_tickers()) | set(targets))
     quotes = get_quotes(symbols)
+    aliases = load_aliases()
 
     fired_any = False
     for sym, t in armed.items():
@@ -50,7 +51,7 @@ def check_once():
         price = q["price"]
         if is_touched(t, price):
             arrow = "↑" if t["direction"] == "above" else "↓"
-            print(f"🔔 seekerizer alert: {display_name(sym, q)} touched target "
+            print(f"🔔 seekerizer alert: {display_name(sym, q, aliases.get(sym))} touched target "
                   f"{arrow} {format_price(sym, t['price'])} "
                   f"(now {format_price(sym, price)})", flush=True)
             targets[sym]["fired"] = True

@@ -13,8 +13,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
-    load_tickers, load_targets, get_quotes, format_price, is_touched,
-    display_name,
+    load_tickers, load_targets, load_aliases, get_quotes, format_price,
+    is_touched, display_name,
 )
 
 SEP = "  │  "
@@ -25,15 +25,16 @@ BLUE = "\033[34m"
 RESET = "\033[0m"
 
 
-def render(tickers, quotes, targets):
+def render(tickers, quotes, targets, aliases=None):
+    aliases = aliases or {}
     parts = []
     for t in tickers:
         q = quotes.get(t)
         if not q:
-            parts.append(f"{t} —")
+            parts.append(f"{display_name(t, alias=aliases.get(t))} —")
             continue
         price, prev = q["price"], q.get("prev")
-        chunk = f"{display_name(t, q)} {format_price(t, price)}"
+        chunk = f"{display_name(t, q, aliases.get(t))} {format_price(t, price)}"
         color = ""
         if prev:
             pct = (price - prev) / prev * 100
@@ -61,7 +62,7 @@ def main():
         print("📈 No symbols tracked — add one with /seekerizer:add-symbol")
         return
 
-    print(render(tickers, get_quotes(tickers), load_targets()))
+    print(render(tickers, get_quotes(tickers), load_targets(), load_aliases()))
 
 
 if __name__ == "__main__":

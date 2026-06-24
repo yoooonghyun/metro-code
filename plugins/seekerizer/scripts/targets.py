@@ -18,7 +18,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
-    load_targets, save_targets, get_quotes, format_price, display_name,
+    load_targets, save_targets, load_aliases, get_quotes, format_price,
+    display_name,
 )
 
 
@@ -45,12 +46,13 @@ def cmd_set(args):
     if direction is None:
         direction = "above" if price >= current else "below"
 
-    name = display_name(sym, q)
+    name = display_name(sym, q)   # store the auto name; alias resolved at display time
+    label = display_name(sym, q, load_aliases().get(sym))
     targets = load_targets()
     targets[sym] = {"price": price, "direction": direction, "fired": False, "name": name}
     save_targets(targets)
     arrow = "↑" if direction == "above" else "↓"
-    print(f"Target set: {name} {arrow} {format_price(sym, price)} "
+    print(f"Target set: {label} {arrow} {format_price(sym, price)} "
           f"(now {format_price(sym, current)})")
     return 0
 
@@ -60,11 +62,12 @@ def cmd_list():
     if not targets:
         print("No price targets set.")
         return 0
+    aliases = load_aliases()
     print("Price targets:")
     for sym, t in targets.items():
         arrow = "↑" if t["direction"] == "above" else "↓"
         state = "fired" if t.get("fired") else "armed"
-        label = t.get("name") or sym
+        label = aliases.get(sym) or t.get("name") or sym
         print(f"  - {label} {arrow} {format_price(sym, t['price'])}  [{state}]")
     return 0
 

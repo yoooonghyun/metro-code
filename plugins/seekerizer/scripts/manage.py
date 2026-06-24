@@ -6,6 +6,8 @@ Usage:
     manage.py add <SYMBOL> [<SYMBOL> ...]
     manage.py remove <SYMBOL> [<SYMBOL> ...]
     manage.py clear
+    manage.py alias <SYMBOL> <NAME...>     # custom display label (e.g. Korean)
+    manage.py unalias <SYMBOL> [...]       # drop the custom label
 
 Symbols use Yahoo Finance notation:
     AAPL          Apple (US)
@@ -22,7 +24,9 @@ import urllib.error
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import load_tickers, save_tickers  # noqa: E402
+from common import (  # noqa: E402
+    load_tickers, save_tickers, load_aliases, save_aliases, load_targets,
+)
 
 
 def validate(symbol):
@@ -48,9 +52,11 @@ def cmd_list():
     if not tickers:
         print("No symbols tracked.")
         return
+    aliases = load_aliases()
     print("Tracked symbols:")
     for t in tickers:
-        print(f"  - {t}")
+        alias = aliases.get(t)
+        print(f"  - {t}" + (f"  ({alias})" if alias else ""))
 
 
 def cmd_add(symbols):
@@ -73,19 +79,63 @@ def cmd_add(symbols):
 
 def cmd_remove(symbols):
     tickers = load_tickers()
-    targets = {s.strip().upper() for s in symbols}
-    removed = [t for t in tickers if t.upper() in targets]
-    kept = [t for t in tickers if t.upper() not in targets]
-    for t in removed:
-        print(f"Removed: {t}")
+    wanted = {s.strip().upper() for s in symbols}
+    removed = [t for t in tickers if t.upper() in wanted]
+    kept = [t for t in tickers if t.upper() not in wanted]
     if not removed:
         print("No matching symbols.")
+        return
     save_tickers(kept)
+    # Drop any display alias for the removed symbols (cosmetic, tied to the ticker).
+    aliases = load_aliases()
+    if any(s in aliases for s in removed):
+        for s in removed:
+            aliases.pop(s, None)
+        save_aliases(aliases)
+    price_targets = load_targets()
+    for t in removed:
+        print(f"Removed: {t}")
+        if t in price_targets:
+            print(f"  note: {t} still has a price target — "
+                  f"remove it with: targets.py remove {t}")
 
 
 def cmd_clear():
     save_tickers([])
     print("Cleared all symbols.")
+
+
+def cmd_alias(args):
+    if len(args) < 2:
+        print("Usage: manage.py alias <SYMBOL> <NAME...>")
+        return 1
+    sym = args[0].strip().upper()
+    name = " ".join(args[1:]).strip()
+    if not name:
+        print("Alias name is empty.")
+        return 1
+    aliases = load_aliases()
+    aliases[sym] = name
+    save_aliases(aliases)
+    print(f"Alias set: {sym} -> {name}")
+    return 0
+
+
+def cmd_unalias(symbols):
+    aliases = load_aliases()
+    removed = []
+    for raw in symbols:
+        sym = raw.strip().upper()
+        if sym in aliases:
+            del aliases[sym]
+            removed.append(sym)
+    save_aliases(aliases)
+    if removed:
+        for s in removed:
+            print(f"Alias removed: {s}")
+    else:
+        print("No matching aliases.")
+    return 0
 
 
 def main(argv):
@@ -107,6 +157,13 @@ def main(argv):
         cmd_remove(rest)
     elif cmd == "clear":
         cmd_clear()
+    elif cmd == "alias":
+        return cmd_alias(rest)
+    elif cmd == "unalias":
+        if not rest:
+            print("Usage: manage.py unalias <SYMBOL> ...")
+            return 1
+        return cmd_unalias(rest)
     else:
         print(__doc__)
         return 1

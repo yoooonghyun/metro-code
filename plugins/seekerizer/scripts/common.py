@@ -55,6 +55,10 @@ def cache_path():
     return os.path.join(data_dir(), "cache.json")
 
 
+def aliases_path():
+    return os.path.join(data_dir(), "aliases.json")
+
+
 def _read_json(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -100,6 +104,19 @@ def save_targets(targets):
     _atomic_write(targets_path(), targets)
 
 
+# --- display aliases -------------------------------------------------------
+# aliases.json: { "005930.KS": "삼성전자" } — a user-chosen label that overrides
+# the auto company name (e.g. to show Korean names Yahoo doesn't provide).
+
+def load_aliases():
+    data = _read_json(aliases_path(), {})
+    return data if isinstance(data, dict) else {}
+
+
+def save_aliases(aliases):
+    _atomic_write(aliases_path(), aliases)
+
+
 def is_touched(target, price):
     if price is None:
         return False
@@ -136,12 +153,15 @@ def clean_name(name):
     return out or name
 
 
-def display_name(symbol, quote=None):
-    """Human-readable label for a symbol — the cleaned company name, else the symbol.
+def display_name(symbol, quote=None, alias=None):
+    """Human-readable label for a symbol.
 
-    Korean tickers are numeric (e.g. 005930.KS), so showing the company name
-    makes the status line readable. `quote` is an entry from get_quotes().
+    Priority: user alias > cleaned company name > the symbol itself. Korean
+    tickers are numeric (e.g. 005930.KS), so a name/alias makes the status line
+    readable. `quote` is an entry from get_quotes(); `alias` is from load_aliases().
     """
+    if alias:
+        return alias
     name = (quote or {}).get("name")
     return clean_name(name) if name else symbol
 

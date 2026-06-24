@@ -64,10 +64,10 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 | `skills/setup/` | one-time status line setup (`/seekerizer:setup`) |
 
 - **Data location**: the watchlist (`tickers.json`), price targets
-  (`targets.json`), and quote cache (`cache.json`) live in the plugin's
-  persistent data dir (`$CLAUDE_PLUGIN_DATA`, falling back to
-  `~/.claude/seekerizer`), so they **survive plugin updates**. Override with
-  `$SEEKERIZER_DATA_DIR`.
+  (`targets.json`), display aliases (`aliases.json`), and quote cache
+  (`cache.json`) live in the plugin's persistent data dir (`$CLAUDE_PLUGIN_DATA`,
+  falling back to `~/.claude/seekerizer`), so they **survive plugin updates**.
+  Override with `$SEEKERIZER_DATA_DIR`.
 - **One quote fetcher, no duplicate calls**: all quotes go through
   `common.get_quotes()`, backed by a single per-symbol cache (60s TTL). The
   background monitor keeps the cache warm and the status line reuses it — a
@@ -77,7 +77,9 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 - **Labels**: the status line shows the company name (e.g. `Samsung Electronics`
   for `005930.KS`) instead of the raw symbol, since Korean tickers are numeric.
   The name comes from the same quote fetch (no extra API call) and corporate
-  suffixes like "Co., Ltd."/"Inc." are trimmed.
+  suffixes like "Co., Ltd."/"Inc." are trimmed. Set a custom label (e.g. a
+  Korean name) with `manage.py alias 005930.KS 삼성전자`; priority is
+  **alias → company name → symbol**.
 
 ## Price-target alerts
 
