@@ -52,7 +52,7 @@ metro-code/
         ├── .claude-plugin/plugin.json
         ├── scripts/              # python (stdlib only)
         ├── skills/
-        │   ├── manage/   # manage watchlist (/stock-alerts:manage)
+        │   ├── add-stock/   # manage watchlist (/stock-alerts:add-stock)
         │   └── setup/    # one-time status line install (/stock-alerts:setup)
         └── README.md
 ```
