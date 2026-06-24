@@ -73,6 +73,7 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
   background monitor keeps the cache warm and the status line reuses it — a
   symbol is fetched at most once per TTL across both.
 - **Currency**: `.KS`/`.KQ` → ₩, `.T` → ¥, `.L` → £, `.HK` → HK$, else $.
+- **Colors**: gains are shown red and losses blue (Korean market convention).
 
 ## Price-target alerts
 

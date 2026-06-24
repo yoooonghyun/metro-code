@@ -18,6 +18,11 @@ from common import (  # noqa: E402
 
 SEP = "  │  "
 
+# Korean market convention: gains red, losses blue.
+RED = "\033[31m"
+BLUE = "\033[34m"
+RESET = "\033[0m"
+
 
 def render(tickers, quotes, targets):
     parts = []
@@ -28,9 +33,16 @@ def render(tickers, quotes, targets):
             continue
         price, prev = q["price"], q.get("prev")
         chunk = f"{t} {format_price(t, price)}"
+        color = ""
         if prev:
             pct = (price - prev) / prev * 100
             chunk += f" {'▲' if pct >= 0 else '▼'}{abs(pct):.2f}%"
+            if pct > 0:
+                color = RED
+            elif pct < 0:
+                color = BLUE
+        if color:
+            chunk = f"{color}{chunk}{RESET}"
         if t in targets and is_touched(targets[t], price):
             chunk = "🔔 " + chunk
         parts.append(chunk)
