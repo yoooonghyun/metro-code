@@ -43,11 +43,29 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
    `~/.claude/seekerizer`. The watchlist (`tickers.json`) and quote cache
    (`cache.json`) live there and survive updates.
 
-`seekerizer` data flow: `statusline.py` (the status line command) reads the
-watchlist via `common.py`, fetches quotes from the Yahoo Finance public chart
-API (no API key), caches them ~60s, and prints one line. `manage.py` edits the
-watchlist (validates symbols against the same API before adding). Symbols use
-Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
+3. **There is exactly one quote fetcher.** All quotes go through
+   `common.get_quotes()`, backed by a single per-symbol cache (`cache.json`,
+   60s TTL). `statusline.py` and `monitor.py` both call it, so a symbol is
+   fetched at most once per TTL across both — never add a separate API call /
+   poll loop in either; extend `get_quotes()` instead.
+
+`seekerizer` data flow:
+- `statusline.py` (the status line command) reads the watchlist + targets via
+  `common.py`, gets quotes through the shared `get_quotes()`, prints one line,
+  and shows a 🔔 next to any symbol whose target is touched.
+- `monitor.py` is the plugin's background **monitor** (registered under
+  `experimental.monitors` in `plugin.json`; Claude Code runs it as a persistent
+  per-session process). It polls the watchlist∪targets via the same
+  `get_quotes()` (keeping the cache warm for the status line), and when a target
+  is touched prints an alert line — each stdout line reaches Claude as a
+  notification. A touched target is marked `fired` (one-shot) until re-set.
+- `manage.py` edits the watchlist; `targets.py` edits price targets
+  (`targets.json`), auto-detecting direction (above/below) from the current
+  price. Both validate symbols against Yahoo before saving.
+
+Symbols use Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
+Monitors are **experimental** and only run while a session is open (no alerts
+when Claude Code is closed).
 
 ## Local development & testing
 

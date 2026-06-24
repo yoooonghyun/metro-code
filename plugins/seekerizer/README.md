@@ -1,7 +1,8 @@
 # seekerizer
 
 Inline stock price ticker for the Claude Code **status line**, with skill-based
-watchlist management. Quotes from the Yahoo Finance public API — **no API key**.
+watchlist management and **price-target alerts**. Quotes from the Yahoo Finance
+public API — **no API key**.
 
 ```
 📈 AAPL $294.30 ▼0.91%  │  TSLA $381.61 ▼5.79%  │  005930.KS ₩310,000 ▼12.31%
@@ -22,11 +23,12 @@ afterward.
 
 ## Usage
 
-Talk to Claude — the `add-symbol` skill handles it (English or Korean):
+Talk to Claude (English or Korean):
 
-- "add NVDA to my watchlist" / "삼성전자 종목 추가해줘"
-- "remove TSLA" / "테슬라 빼줘"
-- "show my watchlist" / "추적 중인 종목 보여줘"
+- `add-symbol` skill — "add NVDA to my watchlist" / "삼성전자 종목 추가해줘",
+  "remove TSLA" / "테슬라 빼줘", "show my watchlist" / "추적 중인 종목 보여줘"
+- `set-target` skill — "alert me when AAPL hits $300" /
+  "AAPL 목표가 300달러로 알림", "list my alerts", "remove the Tesla target"
 
 Or call the scripts directly:
 
@@ -51,19 +53,38 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 
 | File | Role |
 |------|------|
-| `scripts/statusline.py` | status line command: fetch + render (60s cache) |
-| `scripts/manage.py` | add/remove/list/clear, validates symbols |
+| `scripts/common.py` | paths, watchlist/targets state, and the single quote fetch + shared cache |
+| `scripts/statusline.py` | status line command: render quotes, 🔔 on touched targets |
+| `scripts/monitor.py` | background monitor: poll targets, alert when touched |
+| `scripts/manage.py` | watchlist add/remove/list/clear, validates symbols |
+| `scripts/targets.py` | price targets set/list/remove/clear |
 | `scripts/setup.py` | install/remove the status line in your settings |
-| `scripts/common.py` | shared paths/helpers |
-| `skills/add-symbol/` | natural-language watchlist management (`/seekerizer:add-symbol`) |
+| `skills/add-symbol/` | watchlist management (`/seekerizer:add-symbol`) |
+| `skills/set-target/` | price-target alerts (`/seekerizer:set-target`) |
 | `skills/setup/` | one-time status line setup (`/seekerizer:setup`) |
 
-- **Data location**: the watchlist (`tickers.json`) and quote cache
-  (`cache.json`) live in the plugin's persistent data dir
-  (`$CLAUDE_PLUGIN_DATA`, falling back to `~/.claude/seekerizer`), so they
-  **survive plugin updates**. Override with `$SEEKERIZER_DATA_DIR`.
-- **Quotes**: Yahoo Finance chart API, cached 60s to keep the status line fast.
+- **Data location**: the watchlist (`tickers.json`), price targets
+  (`targets.json`), and quote cache (`cache.json`) live in the plugin's
+  persistent data dir (`$CLAUDE_PLUGIN_DATA`, falling back to
+  `~/.claude/seekerizer`), so they **survive plugin updates**. Override with
+  `$SEEKERIZER_DATA_DIR`.
+- **One quote fetcher, no duplicate calls**: all quotes go through
+  `common.get_quotes()`, backed by a single per-symbol cache (60s TTL). The
+  background monitor keeps the cache warm and the status line reuses it — a
+  symbol is fetched at most once per TTL across both.
 - **Currency**: `.KS`/`.KQ` → ₩, `.T` → ¥, `.L` → £, `.HK` → HK$, else $.
+
+## Price-target alerts
+
+Set a target with the `set-target` skill (or `targets.py set AAPL 300`).
+Direction is auto-detected from the current price: a target **above** alerts
+when the price rises to touch it, **below** when it falls to it. When touched,
+the `price-targets` background monitor prints an alert that Claude surfaces in
+the conversation, and the status line shows a 🔔 next to the symbol. A target
+fires once, then re-arms when you set it again.
+
+> Alerts are an **experimental** plugin monitor and only run while a Claude Code
+> session is open — there are no alerts when Claude Code is closed.
 
 ## After a plugin update
 
