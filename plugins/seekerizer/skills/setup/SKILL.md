@@ -60,4 +60,5 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --remove
 - Note that if they later **update the plugin**, the script path changes, so
   they should re-run this setup once. (The watchlist itself persists across
   updates.)
-- Day-to-day watchlist changes use the `seekerizer` skill, not this one.
+- Day-to-day changes use the add-symbol / remove-symbol / alias-symbol /
+  list-symbols / set-target skills, not this one.

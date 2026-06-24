@@ -23,12 +23,13 @@ afterward.
 
 ## Usage
 
-Talk to Claude (English or Korean):
+Talk to Claude (English or Korean) — one skill per action:
 
-- `add-symbol` skill — "add NVDA to my watchlist" / "삼성전자 종목 추가해줘",
-  "remove TSLA" / "테슬라 빼줘", "show my watchlist" / "추적 중인 종목 보여줘"
-- `set-target` skill — "alert me when AAPL hits $300" /
-  "AAPL 목표가 300달러로 알림", "list my alerts", "remove the Tesla target"
+- `add-symbol` — "add NVDA" / "삼성전자 추가해줘"
+- `remove-symbol` — "remove TSLA" / "테슬라 삭제해줘"
+- `alias-symbol` — "show 005930.KS as 삼성전자" / "005930.KS를 삼성전자로 표시"
+- `list-symbols` — "show my watchlist" / "추적 중인 종목 보여줘"
+- `set-target` — "alert me when AAPL hits $300" / "AAPL 목표가 300달러로 알림"
 
 Or call the scripts directly:
 
@@ -56,10 +57,13 @@ python3 "$CLAUDE_PLUGIN_ROOT/scripts/manage.py" clear
 | `scripts/common.py` | paths, watchlist/targets state, and the single quote fetch + shared cache |
 | `scripts/statusline.py` | status line command: render quotes, 🔔 on touched targets |
 | `scripts/monitor.py` | background monitor: poll targets, alert when touched |
-| `scripts/manage.py` | watchlist add/remove/list/clear, validates symbols |
+| `scripts/manage.py` | watchlist add/remove/list/clear + alias/unalias |
 | `scripts/targets.py` | price targets set/list/remove/clear |
 | `scripts/setup.py` | install/remove the status line in your settings |
-| `skills/add-symbol/` | watchlist management (`/seekerizer:add-symbol`) |
+| `skills/add-symbol/` | add a stock (`/seekerizer:add-symbol`) |
+| `skills/remove-symbol/` | remove / clear stocks (`/seekerizer:remove-symbol`) |
+| `skills/alias-symbol/` | custom display label (`/seekerizer:alias-symbol`) |
+| `skills/list-symbols/` | show watchlist & targets (`/seekerizer:list-symbols`) |
 | `skills/set-target/` | price-target alerts (`/seekerizer:set-target`) |
 | `skills/setup/` | one-time status line setup (`/seekerizer:setup`) |
 

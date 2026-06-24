@@ -61,10 +61,13 @@ metro-code/
     └── seekerizer/                 # the plugin
         ├── .claude-plugin/plugin.json
         ├── scripts/                # python (stdlib only)
-        ├── skills/
-        │   ├── add-symbol/         # manage watchlist (/seekerizer:add-symbol)
-        │   ├── set-target/         # price-target alerts (/seekerizer:set-target)
-        │   └── setup/              # one-time status line install (/seekerizer:setup)
+        ├── skills/                 # one skill per action
+        │   ├── add-symbol/         # add a stock
+        │   ├── remove-symbol/      # remove / clear stocks
+        │   ├── alias-symbol/       # custom display label (e.g. Korean)
+        │   ├── list-symbols/       # show watchlist & targets
+        │   ├── set-target/         # price-target alerts
+        │   └── setup/              # one-time status line install
         └── README.md
 ```
 
