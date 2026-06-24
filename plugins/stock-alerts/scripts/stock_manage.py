@@ -11,7 +11,7 @@ Symbols use Yahoo Finance notation:
     AAPL          Apple (US)
     TSLA          Tesla (US)
     005930.KS     Samsung Electronics (KOSPI)
-    035720.KQ     Kakao-style KOSDAQ listing
+    035720.KQ     a KOSDAQ listing
     BTC-USD       Bitcoin
 """
 import json
@@ -21,24 +21,8 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR, "..", "stock-alerts")
-TICKERS_FILE = os.path.join(DATA_DIR, "tickers.json")
-
-
-def load():
-    try:
-        with open(TICKERS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return [str(t) for t in data] if isinstance(data, list) else []
-    except (OSError, ValueError):
-        return []
-
-
-def save(tickers):
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(TICKERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(tickers, f, ensure_ascii=False, indent=2)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import load_tickers, save_tickers  # noqa: E402
 
 
 def validate(symbol):
@@ -60,7 +44,7 @@ def validate(symbol):
 
 
 def cmd_list():
-    tickers = load()
+    tickers = load_tickers()
     if not tickers:
         print("추적 중인 종목이 없습니다.")
         return
@@ -70,7 +54,7 @@ def cmd_list():
 
 
 def cmd_add(symbols):
-    tickers = load()
+    tickers = load_tickers()
     for raw in symbols:
         sym = raw.strip().upper()
         if not sym:
@@ -84,23 +68,23 @@ def cmd_add(symbols):
             continue
         tickers.append(sym)
         print(f"추가됨: {sym}  ({name})")
-    save(tickers)
+    save_tickers(tickers)
 
 
 def cmd_remove(symbols):
-    tickers = load()
+    tickers = load_tickers()
     targets = {s.strip().upper() for s in symbols}
-    kept = [t for t in tickers if t.upper() not in targets]
     removed = [t for t in tickers if t.upper() in targets]
+    kept = [t for t in tickers if t.upper() not in targets]
     for t in removed:
         print(f"삭제됨: {t}")
     if not removed:
         print("일치하는 종목이 없습니다.")
-    save(kept)
+    save_tickers(kept)
 
 
 def cmd_clear():
-    save([])
+    save_tickers([])
     print("모든 종목을 삭제했습니다.")
 
 
