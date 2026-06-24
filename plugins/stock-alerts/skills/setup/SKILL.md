@@ -1,5 +1,5 @@
 ---
-name: stock-alerts-setup
+name: setup
 description: >-
   One-time setup for the stock-alerts plugin: install the stock price status
   line into the user's Claude Code settings. Use right after installing the

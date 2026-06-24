@@ -1,5 +1,5 @@
 ---
-name: stock-alerts
+name: manage
 description: >-
   Add, remove, list, or clear the stocks shown in the Claude Code inline status
   line. Use when the user mentions stocks/quotes/watchlist — e.g. "주식 종목
@@ -14,7 +14,7 @@ Code. The watchlist is stored in the plugin's persistent data dir and edited
 through `stock_manage.py`.
 
 > If the status line isn't showing yet, the user needs to run the setup skill
-> once: `/stock-alerts:stock-alerts-setup`. Mention this if they ask "why don't
+> once: `/stock-alerts:setup`. Mention this if they ask "why don't
 > I see any prices".
 
 ## Symbol format (Yahoo Finance notation)
