@@ -53,8 +53,12 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
 
 `seekerizer` data flow:
 - `statusline.py` (the status line command) reads the watchlist + targets via
-  `common.py`, gets quotes through the shared `get_quotes()`, prints one line,
-  and shows a 🔔 next to any symbol whose target is touched. It labels each
+  `common.py`, gets quotes through the shared `get_quotes()`, and prints the
+  ticker with a 🔔 next to any symbol whose target is touched. Claude Code does
+  not cleanly wrap an over-wide status line, so it packs symbols across as many
+  rows as needed to fit the terminal width (`$COLUMNS`, set by Claude Code
+  v2.1.153+; falls back to the terminal size), measuring visible width with
+  ANSI stripped and CJK/emoji counted as 2 columns. It labels each
   entry with the company name (`common.display_name`, suffix-trimmed) rather
   than the raw symbol — Korean tickers are numeric — and colors it red on a gain
   / blue on a loss (Korean convention). The name rides along in `get_quotes()`'s

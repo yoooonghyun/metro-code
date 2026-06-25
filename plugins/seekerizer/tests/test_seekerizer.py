@@ -176,6 +176,24 @@ class TestStatusline(Base):
         self.assertIn(statusline.RED, out)          # 005930.KS up -> red
         self.assertIn(statusline.BLUE, out)         # AAPL down -> blue
 
+    def test_wraps_to_width(self):
+        common.save_tickers(["AAPL", "NVDA", "005930.KS"])
+        quotes = common.get_quotes(["AAPL", "NVDA", "005930.KS"])
+        out = statusline.render(["AAPL", "NVDA", "005930.KS"], quotes, {}, {}, width=24)
+        lines = out.split("\n")
+        self.assertGreater(len(lines), 1)           # narrow width -> multiple rows
+        # every row with more than one symbol stays within the width budget
+        for ln in lines:
+            if statusline.SEP in ln:
+                self.assertLessEqual(statusline.visible_width(ln), 24)
+        # wide width keeps it on a single row
+        self.assertEqual(len(statusline.render(
+            ["AAPL", "NVDA"], quotes, {}, {}, width=200).split("\n")), 1)
+
+    def test_visible_width_ignores_ansi_counts_cjk(self):
+        self.assertEqual(statusline.visible_width(f"{statusline.RED}AB{statusline.RESET}"), 2)
+        self.assertEqual(statusline.visible_width("삼성"), 4)   # CJK -> 2 cols each
+
 
 class TestMonitor(Base):
     def test_fires_once(self):
