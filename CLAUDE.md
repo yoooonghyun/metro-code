@@ -79,9 +79,15 @@ when Claude Code is closed).
 
 ## Local development & testing
 
-There is no build/lint/test framework — scripts are Python **stdlib only**
-(no dependencies, no API key). Test a plugin by simulating the Claude Code
-runtime environment with the env vars it would set:
+Scripts are Python **stdlib only** (no dependencies, no API key). There is an
+offline `unittest` suite (network mocked) — run it before pushing:
+
+```bash
+python3 plugins/seekerizer/tests/test_seekerizer.py
+```
+
+You can also exercise a plugin by hand by simulating the Claude Code runtime
+environment with the env vars it would set:
 
 ```bash
 # Isolate state in a temp dir so you don't touch ~/.claude
