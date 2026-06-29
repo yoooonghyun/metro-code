@@ -33,6 +33,9 @@ uploaded to **Notion** or **Confluence**.
   (`brew install whisper-cpp` gives `whisper-cli`) plus a `ggml-*.bin` model
   (e.g. `base.en`). Point at non-standard locations with `WHISPER_BIN` /
   `WHISPER_MODEL`.
+- *(optional, for live mode)* `whisper-stream` — whisper.cpp's real-time `stream`
+  example (needs an SDL2 build). Set `WHISPER_STREAM_BIN` if it's elsewhere; tune
+  with `WHISPER_STREAM_ARGS` (e.g. `"--step 500 --length 5000 -vth 0.6"`).
 
 `/scribe:setup` checks all of these and tells you what's missing.
 
@@ -41,9 +44,25 @@ uploaded to **Notion** or **Confluence**.
 Talk to Claude (English or Korean) — one skill per action:
 
 - `setup` — "set up scribe" / "회의록 설정" — check deps + choose upload target
-- `start` — "start the meeting" / "회의 시작"
+- `start` — "start the meeting" / "회의 시작" (add "live" / "실시간" for live mode)
 - `end` — "wrap up the meeting" / "회의 끝내고 정리해줘"
 - `status` — "is scribe recording?" / "회의 녹음 상태"
+
+### Live transcription (optional)
+
+Start with live mode to see the transcript stream into the conversation as the
+meeting happens:
+
+```bash
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start --live "My meeting"
+```
+
+The `live-transcript` background **monitor** tails the recognized text and prints
+each new line, which Claude Code surfaces as it arrives. Live mode uses
+`whisper-stream` (lower latency, lower accuracy) and writes straight to
+`transcript.txt`, so `/scribe:end` skips batch transcription and goes straight to
+the minutes. Expect many lines to stream in. Monitors are **experimental** and
+only run while a Claude Code session is open.
 
 Or call the scripts directly:
 
@@ -72,8 +91,9 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | File | Role |
 |------|------|
 | `scripts/common.py` | paths, config, the active-recording handle, per-OS audio input |
-| `scripts/record.py` | `start`/`stop`/`status` — detached ffmpeg recording, clean stop via SIGINT |
+| `scripts/record.py` | `start`/`stop`/`status` — detached recording (ffmpeg, or whisper-stream for `--live`), clean stop via SIGINT |
 | `scripts/transcribe.py` | locate whisper.cpp + model, transcribe `audio.wav` → `transcript.txt` |
+| `scripts/monitor.py` | live-transcript monitor: tails `transcript.txt` and surfaces new lines |
 | `scripts/setup.py` | check dependencies, choose upload target, store config |
 | `skills/setup/` | `/scribe:setup` |
 | `skills/start/` | `/scribe:start` |

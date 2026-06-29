@@ -76,6 +76,24 @@ def build_command(binary, model, wav, out_base):
             "-l", "auto", "-np"]
 
 
+def find_stream_binary():
+    """Locate whisper.cpp's real-time `stream` example (for live mode)."""
+    env = os.environ.get("WHISPER_STREAM_BIN")
+    if env and os.path.exists(env):
+        return env
+    return which("whisper-stream")
+
+
+def build_stream_command(binary, model, transcript_path):
+    """whisper.cpp `stream`: live mic transcription, appending to a text file.
+
+    Extra flags can be supplied via $WHISPER_STREAM_ARGS (space-separated), e.g.
+    "--step 500 --length 5000 -vth 0.6" to tune latency/VAD.
+    """
+    extra = (os.environ.get("WHISPER_STREAM_ARGS") or "").split()
+    return [binary, "-m", model, "-f", transcript_path] + extra
+
+
 def transcribe(meeting_dir):
     wav = meeting_dir if meeting_dir.endswith(".wav") else \
         os.path.join(meeting_dir, "audio.wav")

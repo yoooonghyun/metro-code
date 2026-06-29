@@ -23,13 +23,14 @@ the transcript — no transcription model is needed for that step.
    If it warns that no audio was captured, tell the user (likely a mic-permission
    issue) and stop here.
 
-2. Transcribe. Note the `TRANSCRIPT:` path in the output:
-
-   ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe.py" "<MEETING_DIR>"
-   ```
-
-   If it reports whisper.cpp/model missing, point the user to `/scribe:setup`.
+2. Get the transcript:
+   - If `stop` already printed a `TRANSCRIPT:` line, the meeting was recorded in
+     **live** mode and is already transcribed — use that file, skip this step.
+   - Otherwise (batch mode) transcribe now; note the `TRANSCRIPT:` path:
+     ```bash
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe.py" "<MEETING_DIR>"
+     ```
+     If it reports whisper.cpp/model missing, point the user to `/scribe:setup`.
 
 3. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`
    using this structure (keep the user's language; omit empty sections):

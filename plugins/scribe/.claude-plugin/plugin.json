@@ -1,11 +1,20 @@
 {
   "name": "scribe",
   "displayName": "Scribe",
-  "version": "0.1.0",
-  "description": "Meeting recorder for Claude Code: start/stop local audio recording, transcribe with whisper.cpp, then turn it into structured minutes saved locally and optionally uploaded to Notion or Confluence.",
+  "version": "0.2.0",
+  "description": "Meeting recorder for Claude Code: start/stop local audio recording (with optional live transcription), transcribe with whisper.cpp, then turn it into structured minutes saved locally and optionally uploaded to Notion or Confluence.",
   "author": {
     "name": "yoooonghyun"
   },
   "keywords": ["meeting", "notes", "minutes", "transcription", "whisper", "audio"],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "experimental": {
+    "monitors": [
+      {
+        "name": "live-transcript",
+        "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/monitor.py\"",
+        "description": "Show live meeting transcription as it is recorded"
+      }
+    ]
+  }
 }

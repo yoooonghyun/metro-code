@@ -22,17 +22,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import which, load_config, save_config, UPLOAD_TARGETS  # noqa: E402
-from transcribe import find_binary, find_model  # noqa: E402
+from transcribe import find_binary, find_model, find_stream_binary  # noqa: E402
 
 
 def deps_status():
     ffmpeg = which("ffmpeg")
     binary = find_binary()
     model = find_model()
+    stream = find_stream_binary()
     print("Dependencies:")
     print(f"  ffmpeg          {'✓ ' + ffmpeg if ffmpeg else '✗ missing (brew/apt install ffmpeg)'}")
     print(f"  whisper.cpp     {'✓ ' + binary if binary else '✗ missing (brew install whisper-cpp)'}")
     print(f"  whisper model   {'✓ ' + model if model else '✗ none (download a ggml-*.bin model)'}")
+    print(f"  whisper-stream  {'✓ ' + stream if stream else '○ optional (live mode; needs SDL2 build)'}")
     return bool(ffmpeg and binary and model)
 
 

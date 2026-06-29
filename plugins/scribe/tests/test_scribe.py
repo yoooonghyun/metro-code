@@ -19,6 +19,7 @@ sys.path.insert(0, SCRIPTS)
 import common      # noqa: E402
 import record      # noqa: E402
 import transcribe  # noqa: E402
+import monitor     # noqa: E402
 import setup as setup_mod  # noqa: E402
 
 
@@ -141,6 +142,78 @@ class TestRecord(Base):
         rv, out = self.run_capture(record.cmd_stop, [])
         self.assertEqual(rv, 1)
         self.assertIn("No meeting", out)
+
+    def test_start_live_builds_stream_cmd(self):
+        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
+        record.find_model = lambda: "/m/ggml-base.en.bin"
+        rv, _ = self.run_capture(record.cmd_start, ["--live", "Daily", "standup"])
+        self.assertEqual(rv, 0)
+        active = common.load_active()
+        self.assertEqual(active["mode"], "live")
+        self.assertTrue(os.path.exists(active["transcript_path"]))
+        cmd = FakePopen.instances[0].cmd
+        self.assertIn("/usr/bin/whisper-stream", cmd)
+        self.assertEqual(cmd[cmd.index("-f") + 1], active["transcript_path"])
+        # the title must not keep the --live flag
+        self.assertEqual(active["title"], "Daily standup")
+
+    def test_start_live_missing_stream(self):
+        record.find_stream_binary = lambda: None
+        record.find_model = lambda: "/m/x.bin"
+        rv, out = self.run_capture(record.cmd_start, ["--live"])
+        self.assertEqual(rv, 1)
+        self.assertIsNone(common.load_active())
+        self.assertIn("whisper-stream", out)
+
+    def test_stop_live_uses_transcript(self):
+        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
+        record.find_model = lambda: "/m/x.bin"
+        self.run_capture(record.cmd_start, ["--live", "demo"])
+        active = common.load_active()
+        with open(active["transcript_path"], "w", encoding="utf-8") as f:
+            f.write("live recognized text")
+        record._terminate = lambda pid, timeout=6.0: None
+        rv, out = self.run_capture(record.cmd_stop, [])
+        self.assertEqual(rv, 0)
+        self.assertIn("TRANSCRIPT:", out)
+        self.assertEqual(common.load_meta(active["id"])["mode"], "live")
+
+
+class TestMonitor(Base):
+    def test_emits_only_new_text_for_live(self):
+        mdir = common.meeting_dir("live1")
+        tpath = os.path.join(mdir, "transcript.txt")
+        open(tpath, "w").close()
+        common.save_active({"id": "live1", "title": "T", "mode": "live",
+                            "dir": mdir, "transcript_path": tpath})
+        state = {"id": None, "emitted": 0}
+
+        with open(tpath, "w", encoding="utf-8") as f:
+            f.write("hello\n")
+        _, out1 = self.run_capture(monitor.check_once, state)
+        self.assertIn("started", out1)
+        self.assertIn("📝 hello", out1)
+
+        _, out2 = self.run_capture(monitor.check_once, state)   # nothing new
+        self.assertNotIn("hello", out2)
+
+        with open(tpath, "a", encoding="utf-8") as f:
+            f.write("world\n")
+        _, out3 = self.run_capture(monitor.check_once, state)
+        self.assertIn("📝 world", out3)
+        self.assertNotIn("hello", out3)
+
+    def test_idle_when_no_live_meeting(self):
+        state = {"id": "x", "emitted": 5}
+        _, out = self.run_capture(monitor.check_once, state)
+        self.assertEqual(out.strip(), "")
+        self.assertIsNone(state["id"])
+
+    def test_ignores_batch_meeting(self):
+        common.save_active({"id": "b1", "mode": "batch", "dir": common.meeting_dir("b1")})
+        state = {"id": None, "emitted": 0}
+        _, out = self.run_capture(monitor.check_once, state)
+        self.assertEqual(out.strip(), "")
 
 
 class TestTranscribe(Base):
