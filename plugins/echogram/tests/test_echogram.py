@@ -98,8 +98,8 @@ class TestRecord(Base):
         record.subprocess.Popen = FakePopen
         record.which = lambda n: "/usr/bin/ffmpeg"
         # Default: live tooling absent, so the default mode falls back to batch.
-        record.find_stream_binary = lambda: None
-        record.find_model = lambda: None
+        record.find_stream_binary = lambda *a, **k: None
+        record.find_model = lambda *a, **k: None
 
     def tearDown(self):
         record.subprocess.Popen = self._popen
@@ -119,8 +119,8 @@ class TestRecord(Base):
         self.assertEqual(cmd[-3:], ["-ar", "16000", active["audio_path"]])
 
     def test_default_is_live_when_available(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/ggml-base.en.bin"
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
         rv, _ = self.run_capture(record.cmd_start, ["Standup"])   # no flags
         self.assertEqual(rv, 0)
         self.assertEqual(common.load_active()["mode"], "live")
@@ -165,8 +165,8 @@ class TestRecord(Base):
         self.assertIn("No meeting", out)
 
     def test_start_live_builds_stream_cmd(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/ggml-base.en.bin"
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
         rv, _ = self.run_capture(record.cmd_start, ["--live", "Daily", "standup"])
         self.assertEqual(rv, 0)
         active = common.load_active()
@@ -179,16 +179,16 @@ class TestRecord(Base):
         self.assertEqual(active["title"], "Daily standup")
 
     def test_start_live_missing_stream(self):
-        record.find_stream_binary = lambda: None
-        record.find_model = lambda: "/m/x.bin"
+        record.find_stream_binary = lambda *a, **k: None
+        record.find_model = lambda *a, **k: "/m/x.bin"
         rv, out = self.run_capture(record.cmd_start, ["--live"])
         self.assertEqual(rv, 1)
         self.assertIsNone(common.load_active())
         self.assertIn("whisper-stream", out)
 
     def test_stop_live_uses_transcript(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/x.bin"
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/x.bin"
         self.run_capture(record.cmd_start, ["--live", "demo"])
         active = common.load_active()
         with open(active["transcript_path"], "w", encoding="utf-8") as f:
@@ -245,6 +245,39 @@ class TestTranscribe(Base):
         self.assertIn("-otxt", cmd)
         self.assertIn("/a/transcript", cmd)
 
+    def test_commands_pass_language(self):
+        c = transcribe.build_command("b", "m", "w", "o", "ko")
+        self.assertEqual(c[c.index("-l") + 1], "ko")
+        s = transcribe.build_stream_command("b", "m", "t", "ko")
+        self.assertEqual(s[s.index("-l") + 1], "ko")
+        # default is auto, not English
+        self.assertEqual(transcribe.build_command("b", "m", "w", "o")[
+            transcribe.build_command("b", "m", "w", "o").index("-l") + 1], "auto")
+
+    def test_model_selection_language_aware(self):
+        md = tempfile.mkdtemp()
+        for n in ("ggml-base.en.bin", "ggml-base.bin"):
+            open(os.path.join(md, n), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            self.assertTrue(transcribe.find_model("en").endswith("ggml-base.en.bin"))
+            self.assertTrue(transcribe.find_model("ko").endswith("ggml-base.bin"))
+            self.assertTrue(transcribe.find_model("auto").endswith("ggml-base.bin"))
+        finally:
+            transcribe.MODEL_DIRS = orig
+
+    def test_english_only_model_rejected_for_korean(self):
+        md = tempfile.mkdtemp()
+        open(os.path.join(md, "ggml-base.en.bin"), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            self.assertIsNone(transcribe.find_model("ko"))   # .en can't do Korean
+            self.assertTrue(transcribe.find_model("en"))
+        finally:
+            transcribe.MODEL_DIRS = orig
+
     def test_find_binary_and_model_from_env(self):
         b = os.path.join(self.tmp, "whisper-cli"); open(b, "w").close()
         m = os.path.join(self.tmp, "ggml-base.en.bin"); open(m, "w").close()
@@ -259,7 +292,7 @@ class TestTranscribe(Base):
         with open(wav, "wb") as f:
             f.write(b"RIFFfake")
         transcribe.find_binary = lambda: "/w/whisper-cli"
-        transcribe.find_model = lambda: "/m/ggml-base.en.bin"
+        transcribe.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
 
         def fake_run(cmd, **kw):
             out_base = cmd[cmd.index("-of") + 1]
@@ -282,7 +315,7 @@ class TestTranscribe(Base):
         with open(os.path.join(mdir, "audio.wav"), "wb") as f:
             f.write(b"x")
         transcribe.find_binary = lambda: None
-        transcribe.find_model = lambda: None
+        transcribe.find_model = lambda *a, **k: None
         rv, out = self.run_capture(transcribe.transcribe, mdir)
         self.assertEqual(rv, 1)
         self.assertIn("whisper.cpp not found", out)
@@ -293,6 +326,11 @@ class TestSetup(Base):
         rv, _ = self.run_capture(setup_mod.main, ["--target", "local"])
         self.assertEqual(rv, 0)
         self.assertEqual(common.load_config()["upload_target"], "local")
+
+    def test_language_setting(self):
+        rv, _ = self.run_capture(setup_mod.main, ["--language", "ko"])
+        self.assertEqual(rv, 0)
+        self.assertEqual(common.load_config()["language"], "ko")
 
     def test_target_notion_with_param(self):
         self.run_capture(setup_mod.main, ["--target", "notion", "parent_page_id=PAGE1"])

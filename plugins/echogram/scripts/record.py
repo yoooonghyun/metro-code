@@ -95,10 +95,11 @@ def cmd_start(args):
     # Live is the default; --batch opts out. If live can't run and the user
     # didn't explicitly ask for it, fall back to batch instead of failing.
     if explicit_live or not explicit_batch:
+        language = load_config().get("language", "auto")
         binary = find_stream_binary()
-        model = find_model()
+        model = find_model(language)
         if binary and model:
-            return _start_live(title, mid, mdir, binary, model)
+            return _start_live(title, mid, mdir, binary, model, language)
         if explicit_live:
             print(STREAM_HINT if not binary else
                   "No whisper model found — download a ggml-*.bin (see /echogram:setup).")
@@ -135,11 +136,11 @@ def _start_batch(title, mid, mdir):
     return 0
 
 
-def _start_live(title, mid, mdir, binary, model):
+def _start_live(title, mid, mdir, binary, model, language="auto"):
     transcript_path = os.path.join(mdir, "transcript.txt")
     open(transcript_path, "a").close()          # ensure the tail target exists
     log_path = os.path.join(mdir, "stream.log")
-    cmd = build_stream_command(binary, model, transcript_path)
+    cmd = build_stream_command(binary, model, transcript_path, language)
     proc = _spawn(cmd, log_path)
 
     active = {

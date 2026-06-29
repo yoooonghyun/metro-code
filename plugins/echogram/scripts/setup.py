@@ -10,6 +10,7 @@ Usage:
     setup.py --target notion     parent_page_id=<id>
     setup.py --target confluence base_url=<url> space_key=<key> parent_page_id=<id>
     setup.py --audio-input :1     # override the ffmpeg input device (optional)
+    setup.py --language ko        # transcription language ("auto", "ko", "en", ...)
 
 Destinations:
     local       save minutes.md only (always also saved locally)
@@ -25,15 +26,17 @@ from common import which, load_config, save_config, UPLOAD_TARGETS  # noqa: E402
 from transcribe import find_binary, find_model, find_stream_binary  # noqa: E402
 
 
-def deps_status():
+def deps_status(language="auto"):
     ffmpeg = which("ffmpeg")
     binary = find_binary()
-    model = find_model()
+    model = find_model(language)
     stream = find_stream_binary()
     print("Dependencies:")
     print(f"  ffmpeg          {'✓ ' + ffmpeg if ffmpeg else '✗ missing (brew/apt install ffmpeg)'}")
     print(f"  whisper.cpp     {'✓ ' + binary if binary else '✗ missing (brew install whisper-cpp)'}")
-    print(f"  whisper model   {'✓ ' + model if model else '✗ none (download a ggml-*.bin model)'}")
+    note = "" if model else (" (need a multilingual ggml-*.bin, not an .en-only model)"
+                             if language != "en" else "")
+    print(f"  whisper model   {'✓ ' + model if model else '✗ none' + note}")
     print(f"  whisper-stream  {'✓ ' + stream if stream else '○ optional (live mode; needs SDL2 build)'}")
     return bool(ffmpeg and binary and model)
 
@@ -48,6 +51,7 @@ def print_config(cfg):
         print(f"  confluence.base_url       = {c.get('base_url') or '(unset)'}")
         print(f"  confluence.space_key      = {c.get('space_key') or '(unset)'}")
         print(f"  confluence.parent_page_id = {c.get('parent_page_id') or '(unset)'}")
+    print(f"  language = {cfg.get('language', 'auto')}")
     if cfg.get("audio_input"):
         print(f"  audio_input = {cfg['audio_input']}")
 
@@ -77,6 +81,14 @@ def main(argv):
             save_config(cfg)
             print(f"audio_input set to {cfg['audio_input']}")
 
+    if "--language" in argv:
+        i = argv.index("--language")
+        if i + 1 < len(argv):
+            cfg["language"] = argv[i + 1]
+            save_config(cfg)
+            print(f"language set to {cfg['language']}")
+            return 0
+
     if "--target" in argv:
         i = argv.index("--target")
         target = argv[i + 1] if i + 1 < len(argv) else ""
@@ -96,7 +108,7 @@ def main(argv):
         return 0
 
     # No action flags: report status.
-    ok = deps_status()
+    ok = deps_status(cfg.get("language", "auto"))
     print()
     print_config(cfg)
     if not ok:

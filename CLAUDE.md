@@ -89,7 +89,10 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
   `stop` finalizes the file with **SIGINT** (ffmpeg's clean shutdown, like `q`),
   escalating to SIGTERM, then writes `meetings/<id>/meta.json`.
 - `transcribe.py` runs **whisper.cpp** (`whisper-cli`/`whisper-cpp`, or
-  `$WHISPER_BIN`/`$WHISPER_MODEL`) on `audio.wav` → `transcript.txt`.
+  `$WHISPER_BIN`/`$WHISPER_MODEL`) on `audio.wav` → `transcript.txt`. The
+  language (`config.json` `language`, default `auto`, e.g. `ko`) is passed to
+  whisper's `-l`; for non-English it also avoids English-only `*.en` models
+  (which can't transcribe other languages) when picking one.
 - **Live mode** (`start --live`) swaps ffmpeg for whisper.cpp's `whisper-stream`,
   which appends recognized text to `transcript.txt` as it goes. `monitor.py`
   (registered under `experimental.monitors`) tails that file and prints new lines
