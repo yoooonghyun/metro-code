@@ -53,8 +53,12 @@ bundled scripts through the `${CLAUDE_PLUGIN_ROOT}` env var (e.g.
 
 `seekerizer` data flow:
 - `statusline.py` (the status line command) reads the watchlist + targets via
-  `common.py`, gets quotes through the shared `get_quotes()`, prints one line,
-  and shows a 🔔 next to any symbol whose target is touched. It labels each
+  `common.py`, gets quotes through the shared `get_quotes()`, and prints the
+  ticker with a 🔔 next to any symbol whose target is touched. Claude Code does
+  not cleanly wrap an over-wide status line, so it packs symbols across as many
+  rows as needed to fit the terminal width (`$COLUMNS`, set by Claude Code
+  v2.1.153+; falls back to the terminal size), measuring visible width with
+  ANSI stripped and CJK/emoji counted as 2 columns. It labels each
   entry with the company name (`common.display_name`, suffix-trimmed) rather
   than the raw symbol — Korean tickers are numeric — and colors it red on a gain
   / blue on a loss (Korean convention). The name rides along in `get_quotes()`'s
@@ -103,9 +107,15 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 
 ## Local development & testing
 
-There is no build/lint/test framework — scripts are Python **stdlib only**
-(no dependencies, no API key). Test a plugin by simulating the Claude Code
-runtime environment with the env vars it would set:
+Scripts are Python **stdlib only** (no dependencies, no API key). There is an
+offline `unittest` suite (network mocked) — run it before pushing:
+
+```bash
+python3 plugins/seekerizer/tests/test_seekerizer.py
+```
+
+You can also exercise a plugin by hand by simulating the Claude Code runtime
+environment with the env vars it would set:
 
 ```bash
 # Isolate state in a temp dir so you don't touch ~/.claude
