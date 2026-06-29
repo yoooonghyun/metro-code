@@ -93,33 +93,54 @@ class TestRecord(Base):
         FakePopen.instances = []
         self._popen = record.subprocess.Popen
         self._which = record.which
+        self._fsb = record.find_stream_binary
+        self._fm = record.find_model
         record.subprocess.Popen = FakePopen
         record.which = lambda n: "/usr/bin/ffmpeg"
+        # Default: live tooling absent, so the default mode falls back to batch.
+        record.find_stream_binary = lambda: None
+        record.find_model = lambda: None
 
     def tearDown(self):
         record.subprocess.Popen = self._popen
         record.which = self._which
+        record.find_stream_binary = self._fsb
+        record.find_model = self._fm
         super().tearDown()
 
-    def test_start_records_and_builds_cmd(self):
-        rv, _ = self.run_capture(record.cmd_start, ["Sprint", "planning"])
+    def test_batch_flag_builds_ffmpeg_cmd(self):
+        rv, _ = self.run_capture(record.cmd_start, ["--batch", "Sprint", "planning"])
         self.assertEqual(rv, 0)
         active = common.load_active()
-        self.assertEqual(active["pid"], 4321)
+        self.assertEqual(active["mode"], "batch")
         self.assertEqual(active["title"], "Sprint planning")
         cmd = FakePopen.instances[0].cmd
         self.assertIn("/usr/bin/ffmpeg", cmd)
         self.assertEqual(cmd[-3:], ["-ar", "16000", active["audio_path"]])
 
+    def test_default_is_live_when_available(self):
+        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
+        record.find_model = lambda: "/m/ggml-base.en.bin"
+        rv, _ = self.run_capture(record.cmd_start, ["Standup"])   # no flags
+        self.assertEqual(rv, 0)
+        self.assertEqual(common.load_active()["mode"], "live")
+
+    def test_default_falls_back_to_batch(self):
+        # stream tooling missing (setUp default) -> default start uses batch
+        rv, out = self.run_capture(record.cmd_start, ["Standup"])
+        self.assertEqual(rv, 0)
+        self.assertEqual(common.load_active()["mode"], "batch")
+        self.assertIn("Live mode unavailable", out)
+
     def test_no_double_start(self):
-        self.run_capture(record.cmd_start, ["one"])
-        rv, out = self.run_capture(record.cmd_start, ["two"])
+        self.run_capture(record.cmd_start, ["--batch", "one"])
+        rv, out = self.run_capture(record.cmd_start, ["--batch", "two"])
         self.assertEqual(rv, 1)
         self.assertIn("already being recorded", out)
 
     def test_start_without_ffmpeg(self):
         record.which = lambda n: None
-        rv, out = self.run_capture(record.cmd_start, [])
+        rv, out = self.run_capture(record.cmd_start, ["--batch"])
         self.assertEqual(rv, 1)
         self.assertIsNone(common.load_active())
         self.assertIn("ffmpeg not found", out)

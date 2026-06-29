@@ -44,17 +44,17 @@ uploaded to **Notion** or **Confluence**.
 Talk to Claude (English or Korean) — one skill per action:
 
 - `setup` — "set up scribe" / "회의록 설정" — check deps + choose upload target
-- `start` — "start the meeting" / "회의 시작" (add "live" / "실시간" for live mode)
+- `start` — "start the meeting" / "회의 시작" (live by default; "batch" for audio-only)
 - `end` — "wrap up the meeting" / "회의 끝내고 정리해줘"
 - `status` — "is scribe recording?" / "회의 녹음 상태"
 
-### Live transcription (optional)
+### Live transcription (default)
 
-Start with live mode to see the transcript stream into the conversation as the
-meeting happens:
+`start` records in **live** mode by default — the transcript streams into the
+conversation as the meeting happens:
 
 ```bash
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start --live "My meeting"
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start "My meeting"
 ```
 
 The `live-transcript` background **monitor** tails the recognized text and prints
@@ -63,6 +63,10 @@ each new line, which Claude Code surfaces as it arrives. Live mode uses
 `transcript.txt`, so `/scribe:end` skips batch transcription and goes straight to
 the minutes. Expect many lines to stream in. Monitors are **experimental** and
 only run while a Claude Code session is open.
+
+If `whisper-stream` isn't installed, `start` automatically falls back to **batch**
+mode (audio recorded via ffmpeg, transcribed at the end). Force batch with
+`start --batch` when you want audio-only / higher-accuracy transcription.
 
 Or call the scripts directly:
 
