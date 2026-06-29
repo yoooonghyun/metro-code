@@ -7,7 +7,7 @@ description: >-
   "녹음 끝내고 정리해줘".
 ---
 
-# Scribe — end a meeting
+# Echogram — end a meeting
 
 Stop the recording and turn it into minutes. You (Claude) write the minutes from
 the transcript — no transcription model is needed for that step.
@@ -30,7 +30,7 @@ the transcript — no transcription model is needed for that step.
      ```bash
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe.py" "<MEETING_DIR>"
      ```
-     If it reports whisper.cpp/model missing, point the user to `/scribe:setup`.
+     If it reports whisper.cpp/model missing, point the user to `/echogram:setup`.
 
 3. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`
    using this structure (keep the user's language; omit empty sections):
@@ -88,4 +88,4 @@ the transcript — no transcription model is needed for that step.
 
 - Always keep the local `minutes.md`, even when uploading elsewhere.
 - If the upload destination isn't configured (e.g. Notion parent unset), save
-  locally and tell the user to run `/scribe:setup`.
+  locally and tell the user to run `/echogram:setup`.

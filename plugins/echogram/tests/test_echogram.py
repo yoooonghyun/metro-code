@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Offline test suite for the scribe plugin (stdlib unittest only).
+"""Offline test suite for the echogram plugin (stdlib unittest only).
 
 ffmpeg, whisper.cpp and all subprocess/signal calls are mocked, so these run
 with no audio hardware and no external tools. Run from anywhere:
 
-    python3 plugins/scribe/tests/test_scribe.py
+    python3 plugins/echogram/tests/test_echogram.py
 """
 import io
 import os
@@ -26,10 +26,10 @@ import setup as setup_mod  # noqa: E402
 class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
-        os.environ["SCRIBE_DATA_DIR"] = self.tmp
+        os.environ["ECHOGRAM_DATA_DIR"] = self.tmp
 
     def tearDown(self):
-        os.environ.pop("SCRIBE_DATA_DIR", None)
+        os.environ.pop("ECHOGRAM_DATA_DIR", None)
         for v in ("WHISPER_BIN", "WHISPER_MODEL"):
             os.environ.pop(v, None)
 

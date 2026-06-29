@@ -6,9 +6,9 @@ description: >-
   "회의 시작", "회의록 시작해줘", "실시간 전사로 시작", "live transcription".
 ---
 
-# Scribe — start a meeting
+# Echogram — start a meeting
 
-Begin a local recording that runs in the background until `/scribe:end`.
+Begin a local recording that runs in the background until `/echogram:end`.
 
 ## Steps
 
@@ -28,12 +28,12 @@ Begin a local recording that runs in the background until `/scribe:end`.
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record.py" start --batch "<title>"
      ```
 
-2. Confirm recording has started and that `/scribe:end` stops it and produces the
+2. Confirm recording has started and that `/echogram:end` stops it and produces the
    minutes.
 
 ## Notes
 
 - Live mode needs whisper.cpp's `whisper-stream`; batch needs `ffmpeg`. If a
-  required tool is missing the script says so — point the user to `/scribe:setup`.
-- Only one meeting records at a time; if one is active, offer `/scribe:end` first.
+  required tool is missing the script says so — point the user to `/echogram:setup`.
+- Only one meeting records at a time; if one is active, offer `/echogram:end` first.
 - Recording needs a local mic (won't work in a remote/web session).

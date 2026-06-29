@@ -1,16 +1,16 @@
 ---
 name: setup
 description: >-
-  Set up scribe: check dependencies (ffmpeg, whisper.cpp + model) and choose
+  Set up echogram: check dependencies (ffmpeg, whisper.cpp + model) and choose
   where finished meeting minutes are uploaded (local, Notion, or Confluence).
-  Use for "set up scribe", "configure meeting notes", "회의록 설정",
+  Use for "set up echogram", "configure meeting notes", "회의록 설정",
   "회의록 업로드 위치 설정".
 ---
 
-# Scribe — setup
+# Echogram — setup
 
 One-time setup: verify the recording/transcription tools and pick an upload
-destination. The choice is stored in config.json and reused by `/scribe:end`.
+destination. The choice is stored in config.json and reused by `/echogram:end`.
 
 ## Steps
 
@@ -45,7 +45,7 @@ destination. The choice is stored in config.json and reused by `/scribe:end`.
 
 4. (Optional) If recording captures the wrong device, set an override:
    `setup.py --audio-input :1` (macOS index) and confirm with a short test
-   recording via `/scribe:start` → `/scribe:end`.
+   recording via `/echogram:start` → `/echogram:end`.
 
 ## Notes
 

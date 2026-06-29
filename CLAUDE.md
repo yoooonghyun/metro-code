@@ -77,7 +77,7 @@ Symbols use Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
 Monitors are **experimental** and only run while a session is open (no alerts
 when Claude Code is closed).
 
-## Plugin: `scribe` (meeting notes)
+## Plugin: `echogram` (meeting notes)
 
 Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 - `record.py` spawns **ffmpeg detached** (`start_new_session=True`) so recording
@@ -98,8 +98,8 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 - Upload destination is chosen once in `setup.py` (`config.json`
   `upload_target`): `local` | `notion` (via Notion MCP under a parent page) |
   `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
-- Same data-dir rule as seekerizer: `$SCRIBE_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
-  `~/.claude/scribe`. Needs a **local mic** — useless in a remote/web session.
+- Same data-dir rule as seekerizer: `$ECHOGRAM_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
+  `~/.claude/echogram`. Needs a **local mic** — useless in a remote/web session.
 
 ## Local development & testing
 

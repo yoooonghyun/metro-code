@@ -36,10 +36,10 @@ INSTALL_HINT = (
     "  brew install whisper-cpp                  # provides `whisper-cli`\n"
     "  # or build from https://github.com/ggml-org/whisper.cpp\n"
     "  # download a model (e.g. base.en) into ~/.cache/whisper.cpp/\n"
-    "Then point scribe at them if needed:\n"
+    "Then point echogram at them if needed:\n"
     "  export WHISPER_BIN=/path/to/whisper-cli\n"
     "  export WHISPER_MODEL=/path/to/ggml-base.en.bin\n"
-    "Verify with /scribe:setup."
+    "Verify with /echogram:setup."
 )
 
 

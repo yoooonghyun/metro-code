@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check scribe's dependencies and choose where finished minutes are uploaded.
+"""Check echogram's dependencies and choose where finished minutes are uploaded.
 
 The upload destination is picked once here and stored in config.json; the `end`
 skill reads it to decide what to do after saving the local minutes.
@@ -100,7 +100,7 @@ def main(argv):
     print()
     print_config(cfg)
     if not ok:
-        print("\nInstall the missing dependencies above, then re-run /scribe:setup.")
+        print("\nInstall the missing dependencies above, then re-run /echogram:setup.")
     return 0
 
 

@@ -39,7 +39,7 @@ INSTALL_HINT = (
     "ffmpeg not found. Install it:\n"
     "  macOS:  brew install ffmpeg\n"
     "  Linux:  sudo apt-get install ffmpeg   (and a working mic via PulseAudio/ALSA)\n"
-    "Then run /scribe:setup to verify."
+    "Then run /echogram:setup to verify."
 )
 
 
@@ -82,7 +82,7 @@ def _spawn(cmd, log_path):
 
 def cmd_start(args):
     if load_active():
-        print("A meeting is already being recorded. Run /scribe:end to finish it first.")
+        print("A meeting is already being recorded. Run /echogram:end to finish it first.")
         return 1
 
     explicit_live = "--live" in args
@@ -101,7 +101,7 @@ def cmd_start(args):
             return _start_live(title, mid, mdir, binary, model)
         if explicit_live:
             print(STREAM_HINT if not binary else
-                  "No whisper model found — download a ggml-*.bin (see /scribe:setup).")
+                  "No whisper model found — download a ggml-*.bin (see /echogram:setup).")
             return 1
         reason = "whisper-stream not found" if not binary else "no whisper model found"
         print(f"ℹ️  Live mode unavailable ({reason}) — "
@@ -131,7 +131,7 @@ def _start_batch(title, mid, mdir):
 
     print(f"🎙️  Recording (batch): {title}")
     print(f"   id {mid}  ·  {audio_path}")
-    print("   Run /scribe:end when the meeting is over.")
+    print("   Run /echogram:end when the meeting is over.")
     return 0
 
 
@@ -152,7 +152,7 @@ def _start_live(title, mid, mdir, binary, model):
 
     print(f"🎙️  Live recording: {title}")
     print(f"   id {mid}  ·  transcribing in real time → shown as it comes in")
-    print("   Run /scribe:end when the meeting is over.")
+    print("   Run /echogram:end when the meeting is over.")
     return 0
 
 

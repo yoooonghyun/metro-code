@@ -19,8 +19,8 @@
       "category": "productivity"
     },
     {
-      "name": "scribe",
-      "source": "./plugins/scribe",
+      "name": "echogram",
+      "source": "./plugins/echogram",
       "description": "Meeting recorder: start/stop local recording with live transcription, transcribe with whisper.cpp, and turn it into structured minutes saved locally and optionally uploaded to Notion or Confluence.",
       "version": "0.3.0",
       "author": {
