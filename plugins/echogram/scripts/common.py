@@ -30,6 +30,9 @@ DEFAULT_CONFIG = {
     "confluence": {"base_url": "", "space_key": "", "parent_page_id": ""},
     # audio_input overrides the auto-detected ffmpeg input (e.g. ":1" on macOS).
     "audio_input": "",
+    # whisper language: "auto" detects, or a code like "ko"/"en"/"ja". Drives
+    # both transcription and model choice (non-English avoids .en-only models).
+    "language": "auto",
 }
 
 

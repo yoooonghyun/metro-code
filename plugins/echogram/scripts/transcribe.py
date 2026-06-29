@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import which  # noqa: E402
+from common import which, load_config  # noqa: E402
 
 MODEL_DIRS = [
     os.environ.get("WHISPER_MODEL_DIR", ""),
@@ -29,7 +29,10 @@ MODEL_DIRS = [
     "/usr/share/whisper.cpp/models",
 ]
 # Preference order when several models are present (accuracy vs. speed balance).
-MODEL_PREF = ["base.en", "base", "small.en", "small", "medium", "large", "tiny"]
+# English-only (.en) models are faster but can't transcribe other languages, so
+# they're only preferred when the language is explicitly English.
+ENGLISH_PREF = ["base.en", "small.en", "base", "small", "medium", "large", "tiny"]
+MULTILINGUAL_PREF = ["base", "small", "medium", "large-v3", "large", "tiny"]
 
 INSTALL_HINT = (
     "whisper.cpp not found. Install it and a model, e.g.:\n"
@@ -50,7 +53,9 @@ def find_binary():
     return which("whisper-cli") or which("whisper-cpp")
 
 
-def find_model():
+def find_model(language="auto"):
+    """Pick a ggml model. For non-English languages, prefer a multilingual model
+    and never fall back to an English-only (.en) one (it can't do e.g. Korean)."""
     env = os.environ.get("WHISPER_MODEL")
     if env and os.path.exists(env):
         return env
@@ -64,16 +69,20 @@ def find_model():
                 found.setdefault(key, os.path.join(d, name))
     if not found:
         return None
-    for pref in MODEL_PREF:
+    english_only = language == "en"
+    for pref in (ENGLISH_PREF if english_only else MULTILINGUAL_PREF):
         if pref in found:
             return found[pref]
-    return sorted(found.values())[0]
+    # Last resort: any model for English; for other languages skip .en models.
+    pool = found if english_only else \
+        {k: v for k, v in found.items() if not k.endswith(".en")}
+    return sorted(pool.values())[0] if pool else None
 
 
-def build_command(binary, model, wav, out_base):
-    # -otxt + -of writes "<out_base>.txt"; -l auto detects language; -np quiet.
+def build_command(binary, model, wav, out_base, language="auto"):
+    # -otxt + -of writes "<out_base>.txt"; -l sets/auto-detects language; -np quiet.
     return [binary, "-m", model, "-f", wav, "-otxt", "-of", out_base,
-            "-l", "auto", "-np"]
+            "-l", language, "-np"]
 
 
 def find_stream_binary():
@@ -84,14 +93,15 @@ def find_stream_binary():
     return which("whisper-stream")
 
 
-def build_stream_command(binary, model, transcript_path):
+def build_stream_command(binary, model, transcript_path, language="auto"):
     """whisper.cpp `stream`: live mic transcription, appending to a text file.
 
-    Extra flags can be supplied via $WHISPER_STREAM_ARGS (space-separated), e.g.
+    `-l` is set explicitly because stream defaults to English; pass "auto" or a
+    code like "ko". Extra flags via $WHISPER_STREAM_ARGS (space-separated), e.g.
     "--step 500 --length 5000 -vth 0.6" to tune latency/VAD.
     """
     extra = (os.environ.get("WHISPER_STREAM_ARGS") or "").split()
-    return [binary, "-m", model, "-f", transcript_path] + extra
+    return [binary, "-m", model, "-f", transcript_path, "-l", language] + extra
 
 
 def transcribe(meeting_dir):
@@ -100,14 +110,15 @@ def transcribe(meeting_dir):
     if not os.path.exists(wav) or os.path.getsize(wav) == 0:
         print(f"No audio to transcribe at {wav}")
         return 1
+    language = load_config().get("language", "auto")
     binary = find_binary()
-    model = find_model()
+    model = find_model(language)
     if not binary or not model:
         print(INSTALL_HINT)
         return 1
 
     out_base = os.path.join(os.path.dirname(wav), "transcript")
-    cmd = build_command(binary, model, wav, out_base)
+    cmd = build_command(binary, model, wav, out_base, language)
     result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     txt = out_base + ".txt"
     if result.returncode != 0 or not os.path.exists(txt):
