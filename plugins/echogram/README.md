@@ -1,14 +1,14 @@
-# scribe
+# echogram
 
-Meeting recorder for Claude Code. **Start** a meeting, talk, **end** it — scribe
+Meeting recorder for Claude Code. **Start** a meeting, talk, **end** it — echogram
 records the audio locally (ffmpeg), transcribes it with **whisper.cpp**, and then
 Claude turns the transcript into structured minutes saved locally and optionally
 uploaded to **Notion** or **Confluence**.
 
 ```text
-/scribe:start  Quarterly planning
+/echogram:start  Quarterly planning
 … meeting happens …
-/scribe:end
+/echogram:end
 → minutes.md (Summary · Attendees · Discussion · Decisions · Action items)
 → uploaded to your configured destination
 ```
@@ -17,11 +17,11 @@ uploaded to **Notion** or **Confluence**.
 
 ```text
 /plugin marketplace add yoooonghyun/metro-code
-/plugin install scribe@metro-code
-/scribe:setup
+/plugin install echogram@metro-code
+/echogram:setup
 ```
 
-> Recording needs a **local microphone**, so scribe works on local Claude Code
+> Recording needs a **local microphone**, so echogram works on local Claude Code
 > (desktop/CLI), **not** in a remote/web session (no audio device there). On
 > macOS, grant your terminal app **Microphone** permission.
 
@@ -37,32 +37,36 @@ uploaded to **Notion** or **Confluence**.
   example (needs an SDL2 build). Set `WHISPER_STREAM_BIN` if it's elsewhere; tune
   with `WHISPER_STREAM_ARGS` (e.g. `"--step 500 --length 5000 -vth 0.6"`).
 
-`/scribe:setup` checks all of these and tells you what's missing.
+`/echogram:setup` checks all of these and tells you what's missing.
 
 ## Usage
 
 Talk to Claude (English or Korean) — one skill per action:
 
-- `setup` — "set up scribe" / "회의록 설정" — check deps + choose upload target
-- `start` — "start the meeting" / "회의 시작" (add "live" / "실시간" for live mode)
+- `setup` — "set up echogram" / "회의록 설정" — check deps + choose upload target
+- `start` — "start the meeting" / "회의 시작" (live by default; "batch" for audio-only)
 - `end` — "wrap up the meeting" / "회의 끝내고 정리해줘"
-- `status` — "is scribe recording?" / "회의 녹음 상태"
+- `status` — "is echogram recording?" / "회의 녹음 상태"
 
-### Live transcription (optional)
+### Live transcription (default)
 
-Start with live mode to see the transcript stream into the conversation as the
-meeting happens:
+`start` records in **live** mode by default — the transcript streams into the
+conversation as the meeting happens:
 
 ```bash
-python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start --live "My meeting"
+python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start "My meeting"
 ```
 
 The `live-transcript` background **monitor** tails the recognized text and prints
 each new line, which Claude Code surfaces as it arrives. Live mode uses
 `whisper-stream` (lower latency, lower accuracy) and writes straight to
-`transcript.txt`, so `/scribe:end` skips batch transcription and goes straight to
+`transcript.txt`, so `/echogram:end` skips batch transcription and goes straight to
 the minutes. Expect many lines to stream in. Monitors are **experimental** and
 only run while a Claude Code session is open.
+
+If `whisper-stream` isn't installed, `start` automatically falls back to **batch**
+mode (audio recorded via ffmpeg, transcribed at the end). Force batch with
+`start --batch` when you want audio-only / higher-accuracy transcription.
 
 Or call the scripts directly:
 
@@ -95,15 +99,15 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | `scripts/transcribe.py` | locate whisper.cpp + model, transcribe `audio.wav` → `transcript.txt` |
 | `scripts/monitor.py` | live-transcript monitor: tails `transcript.txt` and surfaces new lines |
 | `scripts/setup.py` | check dependencies, choose upload target, store config |
-| `skills/setup/` | `/scribe:setup` |
-| `skills/start/` | `/scribe:start` |
-| `skills/end/` | `/scribe:end` — stop → transcribe → Claude writes minutes → upload |
-| `skills/status/` | `/scribe:status` |
+| `skills/setup/` | `/echogram:setup` |
+| `skills/start/` | `/echogram:start` |
+| `skills/end/` | `/echogram:end` — stop → transcribe → Claude writes minutes → upload |
+| `skills/status/` | `/echogram:status` |
 
 - **Data location**: config (`config.json`) and recordings (`meetings/<id>/` with
   `audio.wav`, `transcript.txt`, `minutes.md`, `meta.json`) live in the plugin's
-  persistent data dir (`$CLAUDE_PLUGIN_DATA`, falling back to `~/.claude/scribe`),
-  so they survive plugin updates. Override with `$SCRIBE_DATA_DIR`.
+  persistent data dir (`$CLAUDE_PLUGIN_DATA`, falling back to `~/.claude/echogram`),
+  so they survive plugin updates. Override with `$ECHOGRAM_DATA_DIR`.
 - **No API key for the minutes**: transcription is local (whisper.cpp) and the
   summarization is done by Claude itself — scripts only manage state and files.
 
@@ -112,5 +116,5 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 Offline suite (ffmpeg/whisper/subprocess all mocked — no audio or tools needed):
 
 ```bash
-python3 plugins/scribe/tests/test_scribe.py
+python3 plugins/echogram/tests/test_echogram.py
 ```

@@ -116,3 +116,11 @@ updates. Start a new session afterward.
 
 - `python3` (standard library only — nothing to install)
 - Internet access for quote lookups
+
+## Tests
+
+Offline test suite (network mocked, no internet needed):
+
+```bash
+python3 plugins/seekerizer/tests/test_seekerizer.py
+```

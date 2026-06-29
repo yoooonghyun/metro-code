@@ -39,7 +39,7 @@ INSTALL_HINT = (
     "ffmpeg not found. Install it:\n"
     "  macOS:  brew install ffmpeg\n"
     "  Linux:  sudo apt-get install ffmpeg   (and a working mic via PulseAudio/ALSA)\n"
-    "Then run /scribe:setup to verify."
+    "Then run /echogram:setup to verify."
 )
 
 
@@ -82,18 +82,35 @@ def _spawn(cmd, log_path):
 
 def cmd_start(args):
     if load_active():
-        print("A meeting is already being recorded. Run /scribe:end to finish it first.")
+        print("A meeting is already being recorded. Run /echogram:end to finish it first.")
         return 1
 
-    live = "--live" in args
-    title = " ".join(a for a in args if a != "--live").strip() or "Untitled meeting"
-    config = load_config()
+    explicit_live = "--live" in args
+    explicit_batch = "--batch" in args
+    title = " ".join(a for a in args if a not in ("--live", "--batch")).strip() \
+        or "Untitled meeting"
     mid = new_meeting_id()
     mdir = meeting_dir(mid)
 
-    if live:
-        return _start_live(title, mid, mdir)
+    # Live is the default; --batch opts out. If live can't run and the user
+    # didn't explicitly ask for it, fall back to batch instead of failing.
+    if explicit_live or not explicit_batch:
+        binary = find_stream_binary()
+        model = find_model()
+        if binary and model:
+            return _start_live(title, mid, mdir, binary, model)
+        if explicit_live:
+            print(STREAM_HINT if not binary else
+                  "No whisper model found — download a ggml-*.bin (see /echogram:setup).")
+            return 1
+        reason = "whisper-stream not found" if not binary else "no whisper model found"
+        print(f"ℹ️  Live mode unavailable ({reason}) — "
+              "recording audio for batch transcription instead.")
 
+    return _start_batch(title, mid, mdir)
+
+
+def _start_batch(title, mid, mdir):
     ffmpeg = which("ffmpeg")
     if not ffmpeg:
         print(INSTALL_HINT)
@@ -101,7 +118,7 @@ def cmd_start(args):
     audio_path = os.path.join(mdir, "audio.wav")
     log_path = os.path.join(mdir, "ffmpeg.log")
     cmd = [ffmpeg, "-hide_banner", "-loglevel", "warning", "-y",
-           *ffmpeg_input_args(config), "-ac", "1", "-ar", "16000", audio_path]
+           *ffmpeg_input_args(load_config()), "-ac", "1", "-ar", "16000", audio_path]
     proc = _spawn(cmd, log_path)
 
     active = {
@@ -112,19 +129,13 @@ def cmd_start(args):
     save_active(active)
     save_meta(mid, {k: active[k] for k in ("id", "title", "started_at", "dir", "mode", "audio_path")})
 
-    print(f"🎙️  Recording: {title}")
+    print(f"🎙️  Recording (batch): {title}")
     print(f"   id {mid}  ·  {audio_path}")
-    print("   Run /scribe:end when the meeting is over.")
+    print("   Run /echogram:end when the meeting is over.")
     return 0
 
 
-def _start_live(title, mid, mdir):
-    binary = find_stream_binary()
-    model = find_model()
-    if not binary or not model:
-        print(STREAM_HINT if not binary else
-              "No whisper model found — download a ggml-*.bin (see /scribe:setup).")
-        return 1
+def _start_live(title, mid, mdir, binary, model):
     transcript_path = os.path.join(mdir, "transcript.txt")
     open(transcript_path, "a").close()          # ensure the tail target exists
     log_path = os.path.join(mdir, "stream.log")
@@ -141,7 +152,7 @@ def _start_live(title, mid, mdir):
 
     print(f"🎙️  Live recording: {title}")
     print(f"   id {mid}  ·  transcribing in real time → shown as it comes in")
-    print("   Run /scribe:end when the meeting is over.")
+    print("   Run /echogram:end when the meeting is over.")
     return 0
 
 

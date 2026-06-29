@@ -1,6 +1,6 @@
-"""Shared helpers for the scribe (meeting-notes) plugin scripts.
+"""Shared helpers for the echogram (meeting-notes) plugin scripts.
 
-scribe records a meeting's audio locally (ffmpeg), transcribes it with
+echogram records a meeting's audio locally (ffmpeg), transcribes it with
 whisper.cpp, and then lets Claude turn the transcript into structured minutes
 that are saved locally and optionally uploaded to Notion or Confluence.
 
@@ -11,9 +11,9 @@ This module is the single source of truth for:
 
 State location resolution (so data survives plugin updates, which change
 ${CLAUDE_PLUGIN_ROOT}):
-    1. $SCRIBE_DATA_DIR     (explicit override, e.g. for testing)
+    1. $ECHOGRAM_DATA_DIR     (explicit override, e.g. for testing)
     2. $CLAUDE_PLUGIN_DATA  (per-plugin persistent dir, set by Claude Code)
-    3. ~/.claude/scribe     (fallback when run outside a plugin context)
+    3. ~/.claude/echogram     (fallback when run outside a plugin context)
 """
 import json
 import os
@@ -37,9 +37,9 @@ DEFAULT_CONFIG = {
 
 def data_dir():
     base = (
-        os.environ.get("SCRIBE_DATA_DIR")
+        os.environ.get("ECHOGRAM_DATA_DIR")
         or os.environ.get("CLAUDE_PLUGIN_DATA")
-        or os.path.expanduser("~/.claude/scribe")
+        or os.path.expanduser("~/.claude/echogram")
     )
     os.makedirs(base, exist_ok=True)
     return base
