@@ -17,6 +17,17 @@
       },
       "keywords": ["stocks", "finance", "status-line", "ticker", "quotes"],
       "category": "productivity"
+    },
+    {
+      "name": "scribe",
+      "source": "./plugins/scribe",
+      "description": "Meeting recorder: start/stop local audio, transcribe with whisper.cpp, and turn it into structured minutes saved locally and optionally uploaded to Notion or Confluence.",
+      "version": "0.1.0",
+      "author": {
+        "name": "yoooonghyun"
+      },
+      "keywords": ["meeting", "notes", "minutes", "transcription", "whisper", "audio"],
+      "category": "productivity"
     }
   ]
 }

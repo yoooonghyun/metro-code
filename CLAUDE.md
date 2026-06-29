@@ -77,6 +77,30 @@ Symbols use Yahoo notation (`AAPL`, `005930.KS` for KOSPI, `BTC-USD`, etc.).
 Monitors are **experimental** and only run while a session is open (no alerts
 when Claude Code is closed).
 
+## Plugin: `scribe` (meeting notes)
+
+Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
+- `record.py` spawns **ffmpeg detached** (`start_new_session=True`) so recording
+  survives the `start` process exiting; the pid/paths live in `active.json`.
+  `stop` finalizes the file with **SIGINT** (ffmpeg's clean shutdown, like `q`),
+  escalating to SIGTERM, then writes `meetings/<id>/meta.json`.
+- `transcribe.py` runs **whisper.cpp** (`whisper-cli`/`whisper-cpp`, or
+  `$WHISPER_BIN`/`$WHISPER_MODEL`) on `audio.wav` → `transcript.txt`.
+- **Live mode** (`start --live`) swaps ffmpeg for whisper.cpp's `whisper-stream`,
+  which appends recognized text to `transcript.txt` as it goes. `monitor.py`
+  (registered under `experimental.monitors`) tails that file and prints new lines
+  so the transcript streams into Claude Code in near-real-time; it idles when no
+  live meeting is active. `end` skips batch transcription when a live transcript
+  already exists.
+- The **minutes are written by Claude** (the `end` skill), not a script — same
+  "scripts manage state, Claude does the intelligence; no API key" split as
+  seekerizer. The local `minutes.md` is always kept.
+- Upload destination is chosen once in `setup.py` (`config.json`
+  `upload_target`): `local` | `notion` (via Notion MCP under a parent page) |
+  `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
+- Same data-dir rule as seekerizer: `$SCRIBE_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
+  `~/.claude/scribe`. Needs a **local mic** — useless in a remote/web session.
+
 ## Local development & testing
 
 There is no build/lint/test framework — scripts are Python **stdlib only**
