@@ -25,7 +25,7 @@ from common import (  # noqa: E402
     new_meeting_id,
 )
 from transcribe import (  # noqa: E402
-    find_stream_binary, find_model, build_stream_command,
+    find_stream_binary, find_model, build_stream_command, dedup_transcript,
 )
 
 STREAM_HINT = (
@@ -95,10 +95,11 @@ def cmd_start(args):
     # Live is the default; --batch opts out. If live can't run and the user
     # didn't explicitly ask for it, fall back to batch instead of failing.
     if explicit_live or not explicit_batch:
+        language = load_config().get("language", "auto")
         binary = find_stream_binary()
-        model = find_model()
+        model = find_model(language)
         if binary and model:
-            return _start_live(title, mid, mdir, binary, model)
+            return _start_live(title, mid, mdir, binary, model, language)
         if explicit_live:
             print(STREAM_HINT if not binary else
                   "No whisper model found — download a ggml-*.bin (see /echogram:setup).")
@@ -135,17 +136,21 @@ def _start_batch(title, mid, mdir):
     return 0
 
 
-def _start_live(title, mid, mdir, binary, model):
+def _start_live(title, mid, mdir, binary, model, language="auto"):
+    # whisper-stream writes raw (with sliding-window repeats) to raw_path; the
+    # clean, de-duplicated transcript_path is produced from it (live by the
+    # monitor for display, and on stop for the minutes).
+    raw_path = os.path.join(mdir, "transcript.raw.txt")
     transcript_path = os.path.join(mdir, "transcript.txt")
-    open(transcript_path, "a").close()          # ensure the tail target exists
+    open(raw_path, "a").close()                  # ensure the tail target exists
     log_path = os.path.join(mdir, "stream.log")
-    cmd = build_stream_command(binary, model, transcript_path)
+    cmd = build_stream_command(binary, model, raw_path, language)
     proc = _spawn(cmd, log_path)
 
     active = {
         "id": mid, "title": title, "started_at": now_iso(), "dir": mdir,
-        "mode": "live", "transcript_path": transcript_path, "log_path": log_path,
-        "pid": proc.pid,
+        "mode": "live", "raw_path": raw_path, "transcript_path": transcript_path,
+        "log_path": log_path, "pid": proc.pid,
     }
     save_active(active)
     save_meta(mid, {k: active[k] for k in ("id", "title", "started_at", "dir", "mode", "transcript_path")})
@@ -154,6 +159,25 @@ def _start_live(title, mid, mdir, binary, model):
     print(f"   id {mid}  ·  transcribing in real time → shown as it comes in")
     print("   Run /echogram:end when the meeting is over.")
     return 0
+
+
+def _finalize_live_transcript(active):
+    """De-duplicate the raw stream into the clean transcript. Returns the clean
+    path if it has content, else ""."""
+    raw_path = active.get("raw_path")
+    transcript_path = active.get("transcript_path", "")
+    if raw_path and os.path.exists(raw_path):
+        with open(raw_path, "r", encoding="utf-8") as f:
+            clean = dedup_transcript(f.read())
+        if clean.strip():
+            with open(transcript_path, "w", encoding="utf-8") as f:
+                f.write(clean + "\n")
+            return transcript_path
+    # Backward-compat / fallback: a pre-existing transcript file with content.
+    if transcript_path and os.path.exists(transcript_path) and \
+            os.path.getsize(transcript_path) > 0:
+        return transcript_path
+    return ""
 
 
 def cmd_stop(args):
@@ -179,8 +203,8 @@ def cmd_stop(args):
     print(f"⏹️  Stopped: {active.get('title')}")
     print(f"   started {active.get('started_at')}  ended {ended}")
     if mode == "live":
-        transcript = active.get("transcript_path", "")
-        if os.path.exists(transcript) and os.path.getsize(transcript) > 0:
+        transcript = _finalize_live_transcript(active)
+        if transcript:
             print(f"TRANSCRIPT: {transcript}")   # already transcribed live
         else:
             print("   WARNING: no transcript captured — check mic permission and stream.log.")

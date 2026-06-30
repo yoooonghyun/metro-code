@@ -98,8 +98,8 @@ class TestRecord(Base):
         record.subprocess.Popen = FakePopen
         record.which = lambda n: "/usr/bin/ffmpeg"
         # Default: live tooling absent, so the default mode falls back to batch.
-        record.find_stream_binary = lambda: None
-        record.find_model = lambda: None
+        record.find_stream_binary = lambda *a, **k: None
+        record.find_model = lambda *a, **k: None
 
     def tearDown(self):
         record.subprocess.Popen = self._popen
@@ -119,8 +119,8 @@ class TestRecord(Base):
         self.assertEqual(cmd[-3:], ["-ar", "16000", active["audio_path"]])
 
     def test_default_is_live_when_available(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/ggml-base.en.bin"
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
         rv, _ = self.run_capture(record.cmd_start, ["Standup"])   # no flags
         self.assertEqual(rv, 0)
         self.assertEqual(common.load_active()["mode"], "live")
@@ -165,61 +165,71 @@ class TestRecord(Base):
         self.assertIn("No meeting", out)
 
     def test_start_live_builds_stream_cmd(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/ggml-base.en.bin"
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
         rv, _ = self.run_capture(record.cmd_start, ["--live", "Daily", "standup"])
         self.assertEqual(rv, 0)
         active = common.load_active()
         self.assertEqual(active["mode"], "live")
-        self.assertTrue(os.path.exists(active["transcript_path"]))
+        self.assertTrue(os.path.exists(active["raw_path"]))   # stream writes raw
         cmd = FakePopen.instances[0].cmd
         self.assertIn("/usr/bin/whisper-stream", cmd)
-        self.assertEqual(cmd[cmd.index("-f") + 1], active["transcript_path"])
+        self.assertEqual(cmd[cmd.index("-f") + 1], active["raw_path"])
         # the title must not keep the --live flag
         self.assertEqual(active["title"], "Daily standup")
 
     def test_start_live_missing_stream(self):
-        record.find_stream_binary = lambda: None
-        record.find_model = lambda: "/m/x.bin"
+        record.find_stream_binary = lambda *a, **k: None
+        record.find_model = lambda *a, **k: "/m/x.bin"
         rv, out = self.run_capture(record.cmd_start, ["--live"])
         self.assertEqual(rv, 1)
         self.assertIsNone(common.load_active())
         self.assertIn("whisper-stream", out)
 
-    def test_stop_live_uses_transcript(self):
-        record.find_stream_binary = lambda: "/usr/bin/whisper-stream"
-        record.find_model = lambda: "/m/x.bin"
+    def test_stop_live_dedups_raw_into_transcript(self):
+        record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
+        record.find_model = lambda *a, **k: "/m/x.bin"
         self.run_capture(record.cmd_start, ["--live", "demo"])
         active = common.load_active()
-        with open(active["transcript_path"], "w", encoding="utf-8") as f:
-            f.write("live recognized text")
+        # raw has the same timestamp emitted twice (sliding window) -> must collapse
+        with open(active["raw_path"], "w", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n"
+                    "[00:00:00.000 --> 00:00:02.000]  hello there\n"
+                    "[00:00:02.000 --> 00:00:04.000]  world\n")
         record._terminate = lambda pid, timeout=6.0: None
         rv, out = self.run_capture(record.cmd_stop, [])
         self.assertEqual(rv, 0)
         self.assertIn("TRANSCRIPT:", out)
+        clean = open(active["transcript_path"], encoding="utf-8").read()
+        self.assertEqual(clean.strip().splitlines(), ["hello there", "world"])
         self.assertEqual(common.load_meta(active["id"])["mode"], "live")
 
 
 class TestMonitor(Base):
-    def test_emits_only_new_text_for_live(self):
+    def test_emits_each_segment_once_dedup(self):
         mdir = common.meeting_dir("live1")
-        tpath = os.path.join(mdir, "transcript.txt")
-        open(tpath, "w").close()
+        raw = os.path.join(mdir, "transcript.raw.txt")
+        open(raw, "w").close()
         common.save_active({"id": "live1", "title": "T", "mode": "live",
-                            "dir": mdir, "transcript_path": tpath})
+                            "dir": mdir, "raw_path": raw,
+                            "transcript_path": os.path.join(mdir, "transcript.txt")})
         state = {"id": None, "emitted": 0}
 
-        with open(tpath, "w", encoding="utf-8") as f:
-            f.write("hello\n")
+        with open(raw, "w", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n")
         _, out1 = self.run_capture(monitor.check_once, state)
         self.assertIn("started", out1)
         self.assertIn("📝 hello", out1)
 
-        _, out2 = self.run_capture(monitor.check_once, state)   # nothing new
+        # sliding window re-emits the SAME timestamp -> must not show again
+        with open(raw, "a", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n")
+        _, out2 = self.run_capture(monitor.check_once, state)
         self.assertNotIn("hello", out2)
 
-        with open(tpath, "a", encoding="utf-8") as f:
-            f.write("world\n")
+        # a new segment shows once
+        with open(raw, "a", encoding="utf-8") as f:
+            f.write("[00:00:02.000 --> 00:00:04.000]  world\n")
         _, out3 = self.run_capture(monitor.check_once, state)
         self.assertIn("📝 world", out3)
         self.assertNotIn("hello", out3)
@@ -238,12 +248,58 @@ class TestMonitor(Base):
 
 
 class TestTranscribe(Base):
+    def test_dedup_transcript(self):
+        raw = ("[00:00:00.000 --> 00:00:02.000]  hello\n"
+               "[00:00:00.000 --> 00:00:02.000]  hello there\n"   # same ts -> overwrite
+               "[00:00:02.000 --> 00:00:04.000]  world\n"
+               "[00:00:02.000 --> 00:00:04.000]  world\n")        # exact repeat
+        self.assertEqual(transcribe.dedup_transcript(raw).splitlines(),
+                         ["hello there", "world"])
+
+    def test_dedup_untimed_partials(self):
+        raw = "the\nthe quick\nthe quick brown\nthe quick brown\n"
+        self.assertEqual(transcribe.dedup_transcript(raw).splitlines(),
+                         ["the quick brown"])
+
     def test_build_command(self):
         cmd = transcribe.build_command("/w/whisper-cli", "/m/ggml-base.en.bin",
                                        "/a/audio.wav", "/a/transcript")
         self.assertEqual(cmd[:3], ["/w/whisper-cli", "-m", "/m/ggml-base.en.bin"])
         self.assertIn("-otxt", cmd)
         self.assertIn("/a/transcript", cmd)
+
+    def test_commands_pass_language(self):
+        c = transcribe.build_command("b", "m", "w", "o", "ko")
+        self.assertEqual(c[c.index("-l") + 1], "ko")
+        s = transcribe.build_stream_command("b", "m", "t", "ko")
+        self.assertEqual(s[s.index("-l") + 1], "ko")
+        # default is auto, not English
+        self.assertEqual(transcribe.build_command("b", "m", "w", "o")[
+            transcribe.build_command("b", "m", "w", "o").index("-l") + 1], "auto")
+
+    def test_model_selection_language_aware(self):
+        md = tempfile.mkdtemp()
+        for n in ("ggml-base.en.bin", "ggml-base.bin"):
+            open(os.path.join(md, n), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            self.assertTrue(transcribe.find_model("en").endswith("ggml-base.en.bin"))
+            self.assertTrue(transcribe.find_model("ko").endswith("ggml-base.bin"))
+            self.assertTrue(transcribe.find_model("auto").endswith("ggml-base.bin"))
+        finally:
+            transcribe.MODEL_DIRS = orig
+
+    def test_english_only_model_rejected_for_korean(self):
+        md = tempfile.mkdtemp()
+        open(os.path.join(md, "ggml-base.en.bin"), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            self.assertIsNone(transcribe.find_model("ko"))   # .en can't do Korean
+            self.assertTrue(transcribe.find_model("en"))
+        finally:
+            transcribe.MODEL_DIRS = orig
 
     def test_find_binary_and_model_from_env(self):
         b = os.path.join(self.tmp, "whisper-cli"); open(b, "w").close()
@@ -259,7 +315,7 @@ class TestTranscribe(Base):
         with open(wav, "wb") as f:
             f.write(b"RIFFfake")
         transcribe.find_binary = lambda: "/w/whisper-cli"
-        transcribe.find_model = lambda: "/m/ggml-base.en.bin"
+        transcribe.find_model = lambda *a, **k: "/m/ggml-base.en.bin"
 
         def fake_run(cmd, **kw):
             out_base = cmd[cmd.index("-of") + 1]
@@ -282,7 +338,7 @@ class TestTranscribe(Base):
         with open(os.path.join(mdir, "audio.wav"), "wb") as f:
             f.write(b"x")
         transcribe.find_binary = lambda: None
-        transcribe.find_model = lambda: None
+        transcribe.find_model = lambda *a, **k: None
         rv, out = self.run_capture(transcribe.transcribe, mdir)
         self.assertEqual(rv, 1)
         self.assertIn("whisper.cpp not found", out)
@@ -293,6 +349,11 @@ class TestSetup(Base):
         rv, _ = self.run_capture(setup_mod.main, ["--target", "local"])
         self.assertEqual(rv, 0)
         self.assertEqual(common.load_config()["upload_target"], "local")
+
+    def test_language_setting(self):
+        rv, _ = self.run_capture(setup_mod.main, ["--language", "ko"])
+        self.assertEqual(rv, 0)
+        self.assertEqual(common.load_config()["language"], "ko")
 
     def test_target_notion_with_param(self):
         self.run_capture(setup_mod.main, ["--target", "notion", "parent_page_id=PAGE1"])

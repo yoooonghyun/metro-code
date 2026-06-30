@@ -30,8 +30,10 @@ uploaded to **Notion** or **Confluence**.
 - `python3` (standard library only)
 - [`ffmpeg`](https://ffmpeg.org) — audio capture (`brew install ffmpeg` / `apt install ffmpeg`)
 - [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp) — transcription
-  (`brew install whisper-cpp` gives `whisper-cli`) plus a `ggml-*.bin` model
-  (e.g. `base.en`). Point at non-standard locations with `WHISPER_BIN` /
+  (`brew install whisper-cpp` gives `whisper-cli`) plus a `ggml-*.bin` model.
+  For non-English meetings (e.g. **Korean**) use a **multilingual** model
+  (`ggml-base.bin`/`ggml-small.bin`); English-only `*.en` models can't transcribe
+  other languages. Point at non-standard locations with `WHISPER_BIN` /
   `WHISPER_MODEL`.
 - *(optional, for live mode)* `whisper-stream` — whisper.cpp's real-time `stream`
   example (needs an SDL2 build). Set `WHISPER_STREAM_BIN` if it's elsewhere; tune
@@ -43,10 +45,11 @@ uploaded to **Notion** or **Confluence**.
 
 Talk to Claude (English or Korean) — one skill per action:
 
-- `setup` — "set up echogram" / "회의록 설정" — check deps + choose upload target
+- `setup` — "set up echogram" / "회의록 설정" — check deps + choose upload target + language
 - `start` — "start the meeting" / "회의 시작" (live by default; "batch" for audio-only)
 - `end` — "wrap up the meeting" / "회의 끝내고 정리해줘"
 - `status` — "is echogram recording?" / "회의 녹음 상태"
+- `update` — "update echogram" / "회의록 플러그인 업데이트" — pull the latest version
 
 ### Live transcription (default)
 
@@ -57,12 +60,14 @@ conversation as the meeting happens:
 python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start "My meeting"
 ```
 
-The `live-transcript` background **monitor** tails the recognized text and prints
-each new line, which Claude Code surfaces as it arrives. Live mode uses
-`whisper-stream` (lower latency, lower accuracy) and writes straight to
-`transcript.txt`, so `/echogram:end` skips batch transcription and goes straight to
-the minutes. Expect many lines to stream in. Monitors are **experimental** and
-only run while a Claude Code session is open.
+The `live-transcript` background **monitor** surfaces each new line as it arrives.
+Live mode uses `whisper-stream` (lower latency, lower accuracy), which writes a
+raw `transcript.raw.txt`. Sliding windows re-transcribe the same span, so the
+monitor **de-duplicates** before showing anything (same-timestamp segments
+overwrite, so no sentence appears twice); `/echogram:end` reads the cleaned
+`transcript.txt` and goes straight to the minutes. Monitors are **experimental**
+and only run while a Claude Code session is open. To cut repeats at the source
+you can also run VAD mode via `WHISPER_STREAM_ARGS="--step 0"`.
 
 If `whisper-stream` isn't installed, `start` automatically falls back to **batch**
 mode (audio recorded via ffmpeg, transcribed at the end). Force batch with
@@ -73,6 +78,7 @@ Or call the scripts directly:
 ```bash
 P="$CLAUDE_PLUGIN_ROOT/scripts"
 python3 $P/setup.py                              # deps + config status
+python3 $P/setup.py --language ko                # transcription language (auto/ko/en/...)
 python3 $P/setup.py --target notion parent_page_id=<id>
 python3 $P/record.py start "My meeting"
 python3 $P/record.py status
@@ -97,12 +103,13 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | `scripts/common.py` | paths, config, the active-recording handle, per-OS audio input |
 | `scripts/record.py` | `start`/`stop`/`status` — detached recording (ffmpeg, or whisper-stream for `--live`), clean stop via SIGINT |
 | `scripts/transcribe.py` | locate whisper.cpp + model, transcribe `audio.wav` → `transcript.txt` |
-| `scripts/monitor.py` | live-transcript monitor: tails `transcript.txt` and surfaces new lines |
+| `scripts/monitor.py` | live-transcript monitor: reads `transcript.raw.txt`, de-dups, surfaces new lines |
 | `scripts/setup.py` | check dependencies, choose upload target, store config |
 | `skills/setup/` | `/echogram:setup` |
 | `skills/start/` | `/echogram:start` |
 | `skills/end/` | `/echogram:end` — stop → transcribe → Claude writes minutes → upload |
 | `skills/status/` | `/echogram:status` |
+| `skills/update/` | `/echogram:update` — update the plugin to the latest version |
 
 - **Data location**: config (`config.json`) and recordings (`meetings/<id>/` with
   `audio.wav`, `transcript.txt`, `minutes.md`, `meta.json`) live in the plugin's
@@ -110,6 +117,17 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
   so they survive plugin updates. Override with `$ECHOGRAM_DATA_DIR`.
 - **No API key for the minutes**: transcription is local (whisper.cpp) and the
   summarization is done by Claude itself — scripts only manage state and files.
+
+## Updating
+
+```text
+/echogram:update
+```
+
+Refreshes the marketplace (`claude plugin marketplace update metro-code`) and
+updates the plugin. No re-pointing needed (echogram stores no absolute paths),
+and your config and recorded meetings persist across updates. Start a new session
+afterward.
 
 ## Tests
 
