@@ -60,12 +60,14 @@ conversation as the meeting happens:
 python3 "$CLAUDE_PLUGIN_ROOT/scripts/record.py" start "My meeting"
 ```
 
-The `live-transcript` background **monitor** tails the recognized text and prints
-each new line, which Claude Code surfaces as it arrives. Live mode uses
-`whisper-stream` (lower latency, lower accuracy) and writes straight to
-`transcript.txt`, so `/echogram:end` skips batch transcription and goes straight to
-the minutes. Expect many lines to stream in. Monitors are **experimental** and
-only run while a Claude Code session is open.
+The `live-transcript` background **monitor** surfaces each new line as it arrives.
+Live mode uses `whisper-stream` (lower latency, lower accuracy), which writes a
+raw `transcript.raw.txt`. Sliding windows re-transcribe the same span, so the
+monitor **de-duplicates** before showing anything (same-timestamp segments
+overwrite, so no sentence appears twice); `/echogram:end` reads the cleaned
+`transcript.txt` and goes straight to the minutes. Monitors are **experimental**
+and only run while a Claude Code session is open. To cut repeats at the source
+you can also run VAD mode via `WHISPER_STREAM_ARGS="--step 0"`.
 
 If `whisper-stream` isn't installed, `start` automatically falls back to **batch**
 mode (audio recorded via ffmpeg, transcribed at the end). Force batch with
@@ -101,7 +103,7 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | `scripts/common.py` | paths, config, the active-recording handle, per-OS audio input |
 | `scripts/record.py` | `start`/`stop`/`status` — detached recording (ffmpeg, or whisper-stream for `--live`), clean stop via SIGINT |
 | `scripts/transcribe.py` | locate whisper.cpp + model, transcribe `audio.wav` → `transcript.txt` |
-| `scripts/monitor.py` | live-transcript monitor: tails `transcript.txt` and surfaces new lines |
+| `scripts/monitor.py` | live-transcript monitor: reads `transcript.raw.txt`, de-dups, surfaces new lines |
 | `scripts/setup.py` | check dependencies, choose upload target, store config |
 | `skills/setup/` | `/echogram:setup` |
 | `skills/start/` | `/echogram:start` |

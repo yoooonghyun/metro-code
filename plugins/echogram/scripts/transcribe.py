@@ -14,6 +14,7 @@ Usage:
     transcribe.py <meeting_dir | audio.wav>
 """
 import os
+import re
 import subprocess
 import sys
 
@@ -91,6 +92,36 @@ def find_stream_binary():
     if env and os.path.exists(env):
         return env
     return which("whisper-stream")
+
+
+_TS_RE = re.compile(r"^\[(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*[^\]]+\]\s*(.*)$")
+
+
+def dedup_transcript(text):
+    """Collapse whisper-stream's repeated output into clean, ordered lines.
+
+    Sliding-window streaming re-transcribes the same audio span repeatedly, so
+    the raw file accumulates duplicates. Lines tagged with a `[start --> end]`
+    timestamp are keyed by their start time — a later emission for the same start
+    OVERWRITES the earlier one (the latest pass is the most complete). Untimed
+    lines drop exact repeats and growing partials (keep the longest).
+    """
+    timed = {}        # start_ts -> text (dict preserves first-seen order)
+    untimed = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        m = _TS_RE.match(line)
+        if m:
+            timed[m.group(1)] = m.group(2).strip()      # same timestamp -> overwrite
+        elif untimed and (line.startswith(untimed[-1]) or untimed[-1].startswith(line)):
+            if len(line) >= len(untimed[-1]):           # keep the longer partial
+                untimed[-1] = line
+        else:
+            untimed.append(line)
+    lines = [t for t in timed.values() if t] + untimed
+    return "\n".join(lines)
 
 
 def build_stream_command(binary, model, transcript_path, language="auto"):

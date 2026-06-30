@@ -3,8 +3,10 @@
 
 Registered under experimental.monitors, so Claude Code runs this as a persistent
 per-session process. While a *live* meeting is recording (`record.py start
---live`), whisper.cpp's stream example appends recognized text to the meeting's
-transcript.txt; this monitor tails that file and prints each new chunk to stdout.
+--live`), whisper.cpp's stream example appends recognized text — with sliding
+windows that repeat the same span — to the meeting's transcript.raw.txt. This
+monitor reads that raw file, de-duplicates it (same-timestamp segments overwrite,
+so nothing is shown twice), and prints only newly finalized lines to stdout.
 Claude Code delivers every stdout line as a notification, so the transcript shows
 up in near-real-time. When no live meeting is running it just idles cheaply.
 """
@@ -14,12 +16,13 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import load_active  # noqa: E402
+from transcribe import dedup_transcript  # noqa: E402
 
 POLL_SECONDS = 1.0
 
 
 def check_once(state):
-    """Emit any transcript text not yet shown. `state` persists across calls."""
+    """Emit any de-duplicated transcript lines not yet shown. `state` persists."""
     active = load_active()
     if not active or active.get("mode") != "live":
         state["id"] = None
@@ -31,23 +34,22 @@ def check_once(state):
         state["emitted"] = 0
         print(f"📝 live transcription started: {active.get('title')}", flush=True)
 
-    path = active.get("transcript_path") or os.path.join(active.get("dir", ""), "transcript.txt")
+    path = (active.get("raw_path") or active.get("transcript_path")
+            or os.path.join(active.get("dir", ""), "transcript.raw.txt"))
     try:
         with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
+            raw = f.read()
     except OSError:
         return
 
-    # Emit only the suffix beyond what we've already shown. Using a character
-    # count (not a file offset) is robust whether stream appends or rewrites the
-    # cumulative transcript each pass.
-    if len(text) > state.get("emitted", 0):
-        fresh = text[state["emitted"]:]
-        state["emitted"] = len(text)
-        for line in fresh.splitlines():
-            line = line.strip()
-            if line:
-                print(f"📝 {line}", flush=True)
+    # De-dup first, then emit only lines beyond what we've already shown. Because
+    # same-timestamp segments overwrite in place, the clean list grows only when a
+    # genuinely new segment is finalized — so repeats never reach the chat.
+    lines = [ln for ln in dedup_transcript(raw).splitlines() if ln.strip()]
+    if len(lines) > state.get("emitted", 0):
+        for line in lines[state["emitted"]:]:
+            print(f"📝 {line}", flush=True)
+        state["emitted"] = len(lines)
 
 
 def main():

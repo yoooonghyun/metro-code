@@ -171,10 +171,10 @@ class TestRecord(Base):
         self.assertEqual(rv, 0)
         active = common.load_active()
         self.assertEqual(active["mode"], "live")
-        self.assertTrue(os.path.exists(active["transcript_path"]))
+        self.assertTrue(os.path.exists(active["raw_path"]))   # stream writes raw
         cmd = FakePopen.instances[0].cmd
         self.assertIn("/usr/bin/whisper-stream", cmd)
-        self.assertEqual(cmd[cmd.index("-f") + 1], active["transcript_path"])
+        self.assertEqual(cmd[cmd.index("-f") + 1], active["raw_path"])
         # the title must not keep the --live flag
         self.assertEqual(active["title"], "Daily standup")
 
@@ -186,40 +186,50 @@ class TestRecord(Base):
         self.assertIsNone(common.load_active())
         self.assertIn("whisper-stream", out)
 
-    def test_stop_live_uses_transcript(self):
+    def test_stop_live_dedups_raw_into_transcript(self):
         record.find_stream_binary = lambda *a, **k: "/usr/bin/whisper-stream"
         record.find_model = lambda *a, **k: "/m/x.bin"
         self.run_capture(record.cmd_start, ["--live", "demo"])
         active = common.load_active()
-        with open(active["transcript_path"], "w", encoding="utf-8") as f:
-            f.write("live recognized text")
+        # raw has the same timestamp emitted twice (sliding window) -> must collapse
+        with open(active["raw_path"], "w", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n"
+                    "[00:00:00.000 --> 00:00:02.000]  hello there\n"
+                    "[00:00:02.000 --> 00:00:04.000]  world\n")
         record._terminate = lambda pid, timeout=6.0: None
         rv, out = self.run_capture(record.cmd_stop, [])
         self.assertEqual(rv, 0)
         self.assertIn("TRANSCRIPT:", out)
+        clean = open(active["transcript_path"], encoding="utf-8").read()
+        self.assertEqual(clean.strip().splitlines(), ["hello there", "world"])
         self.assertEqual(common.load_meta(active["id"])["mode"], "live")
 
 
 class TestMonitor(Base):
-    def test_emits_only_new_text_for_live(self):
+    def test_emits_each_segment_once_dedup(self):
         mdir = common.meeting_dir("live1")
-        tpath = os.path.join(mdir, "transcript.txt")
-        open(tpath, "w").close()
+        raw = os.path.join(mdir, "transcript.raw.txt")
+        open(raw, "w").close()
         common.save_active({"id": "live1", "title": "T", "mode": "live",
-                            "dir": mdir, "transcript_path": tpath})
+                            "dir": mdir, "raw_path": raw,
+                            "transcript_path": os.path.join(mdir, "transcript.txt")})
         state = {"id": None, "emitted": 0}
 
-        with open(tpath, "w", encoding="utf-8") as f:
-            f.write("hello\n")
+        with open(raw, "w", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n")
         _, out1 = self.run_capture(monitor.check_once, state)
         self.assertIn("started", out1)
         self.assertIn("📝 hello", out1)
 
-        _, out2 = self.run_capture(monitor.check_once, state)   # nothing new
+        # sliding window re-emits the SAME timestamp -> must not show again
+        with open(raw, "a", encoding="utf-8") as f:
+            f.write("[00:00:00.000 --> 00:00:02.000]  hello\n")
+        _, out2 = self.run_capture(monitor.check_once, state)
         self.assertNotIn("hello", out2)
 
-        with open(tpath, "a", encoding="utf-8") as f:
-            f.write("world\n")
+        # a new segment shows once
+        with open(raw, "a", encoding="utf-8") as f:
+            f.write("[00:00:02.000 --> 00:00:04.000]  world\n")
         _, out3 = self.run_capture(monitor.check_once, state)
         self.assertIn("📝 world", out3)
         self.assertNotIn("hello", out3)
@@ -238,6 +248,19 @@ class TestMonitor(Base):
 
 
 class TestTranscribe(Base):
+    def test_dedup_transcript(self):
+        raw = ("[00:00:00.000 --> 00:00:02.000]  hello\n"
+               "[00:00:00.000 --> 00:00:02.000]  hello there\n"   # same ts -> overwrite
+               "[00:00:02.000 --> 00:00:04.000]  world\n"
+               "[00:00:02.000 --> 00:00:04.000]  world\n")        # exact repeat
+        self.assertEqual(transcribe.dedup_transcript(raw).splitlines(),
+                         ["hello there", "world"])
+
+    def test_dedup_untimed_partials(self):
+        raw = "the\nthe quick\nthe quick brown\nthe quick brown\n"
+        self.assertEqual(transcribe.dedup_transcript(raw).splitlines(),
+                         ["the quick brown"])
+
     def test_build_command(self):
         cmd = transcribe.build_command("/w/whisper-cli", "/m/ggml-base.en.bin",
                                        "/a/audio.wav", "/a/transcript")

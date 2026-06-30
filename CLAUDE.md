@@ -94,11 +94,15 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
   whisper's `-l`; for non-English it also avoids English-only `*.en` models
   (which can't transcribe other languages) when picking one.
 - **Live mode** (`start --live`) swaps ffmpeg for whisper.cpp's `whisper-stream`,
-  which appends recognized text to `transcript.txt` as it goes. `monitor.py`
-  (registered under `experimental.monitors`) tails that file and prints new lines
-  so the transcript streams into Claude Code in near-real-time; it idles when no
-  live meeting is active. `end` skips batch transcription when a live transcript
-  already exists.
+  which appends recognized text to `transcript.raw.txt`. Sliding windows re-emit
+  the same span, so `transcribe.dedup_transcript()` collapses repeats — segments
+  tagged `[start --> end]` are keyed by start time and the latest pass overwrites
+  earlier ones (untimed lines drop growing partials). `monitor.py` (registered
+  under `experimental.monitors`) reads the raw file, de-dups, and prints only
+  newly finalized lines so the transcript streams in near-real-time without
+  duplicates; it idles when no live meeting is active. `stop` de-dups the raw
+  file into the clean `transcript.txt`, and `end` uses that (skipping batch
+  transcription when a live transcript already exists).
 - The **minutes are written by Claude** (the `end` skill), not a script — same
   "scripts manage state, Claude does the intelligence; no API key" split as
   seekerizer. The local `minutes.md` is always kept.
