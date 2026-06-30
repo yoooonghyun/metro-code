@@ -1,7 +1,7 @@
 {
   "name": "echogram",
   "displayName": "Echogram",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Meeting recorder for Claude Code: start/stop local audio recording (with optional live transcription), transcribe with whisper.cpp, then turn it into structured minutes saved locally and optionally uploaded to Notion or Confluence.",
   "author": {
     "name": "yoooonghyun"

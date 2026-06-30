@@ -104,6 +104,8 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
   `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
 - Same data-dir rule as seekerizer: `$ECHOGRAM_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
   `~/.claude/echogram`. Needs a **local mic** — useless in a remote/web session.
+- `update` skill = marketplace-update → plugin-update. Simpler than seekerizer's
+  (no status line, so no absolute path to re-point).
 
 ## Local development & testing
 

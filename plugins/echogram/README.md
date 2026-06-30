@@ -47,6 +47,7 @@ Talk to Claude (English or Korean) — one skill per action:
 - `start` — "start the meeting" / "회의 시작" (live by default; "batch" for audio-only)
 - `end` — "wrap up the meeting" / "회의 끝내고 정리해줘"
 - `status` — "is echogram recording?" / "회의 녹음 상태"
+- `update` — "update echogram" / "회의록 플러그인 업데이트" — pull the latest version
 
 ### Live transcription (default)
 
@@ -103,6 +104,7 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | `skills/start/` | `/echogram:start` |
 | `skills/end/` | `/echogram:end` — stop → transcribe → Claude writes minutes → upload |
 | `skills/status/` | `/echogram:status` |
+| `skills/update/` | `/echogram:update` — update the plugin to the latest version |
 
 - **Data location**: config (`config.json`) and recordings (`meetings/<id>/` with
   `audio.wav`, `transcript.txt`, `minutes.md`, `meta.json`) live in the plugin's
@@ -110,6 +112,17 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
   so they survive plugin updates. Override with `$ECHOGRAM_DATA_DIR`.
 - **No API key for the minutes**: transcription is local (whisper.cpp) and the
   summarization is done by Claude itself — scripts only manage state and files.
+
+## Updating
+
+```text
+/echogram:update
+```
+
+Refreshes the marketplace (`claude plugin marketplace update metro-code`) and
+updates the plugin. No re-pointing needed (echogram stores no absolute paths),
+and your config and recorded meetings persist across updates. Start a new session
+afterward.
 
 ## Tests
 
