@@ -31,9 +31,10 @@ uploaded to **Notion** or **Confluence**.
 - [`ffmpeg`](https://ffmpeg.org) — audio capture (`brew install ffmpeg` / `apt install ffmpeg`)
 - [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp) — transcription
   (`brew install whisper-cpp` gives `whisper-cli`) plus a `ggml-*.bin` model.
-  For non-English meetings (e.g. **Korean**) use a **multilingual** model
-  (`ggml-base.bin`/`ggml-small.bin`); English-only `*.en` models can't transcribe
-  other languages. Point at non-standard locations with `WHISPER_BIN` /
+  `/echogram:setup` can install a model for you — `setup.py --list-models` then
+  `setup.py --install-model small`. Pick **small** or larger for Korean / real
+  meetings (tiny/base are weak, especially for non-English); `.en` variants are
+  English-only. Point at non-standard locations with `WHISPER_BIN` /
   `WHISPER_MODEL`.
 - *(optional, for live mode)* `whisper-stream` — whisper.cpp's real-time `stream`
   example (needs an SDL2 build). Set `WHISPER_STREAM_BIN` if it's elsewhere; tune
@@ -78,6 +79,8 @@ Or call the scripts directly:
 ```bash
 P="$CLAUDE_PLUGIN_ROOT/scripts"
 python3 $P/setup.py                              # deps + config status
+python3 $P/setup.py --list-models               # whisper models you can install
+python3 $P/setup.py --install-model small        # download a ggml model
 python3 $P/setup.py --language ko                # transcription language (auto/ko/en/...)
 python3 $P/setup.py --target notion parent_page_id=<id>
 python3 $P/record.py start "My meeting"

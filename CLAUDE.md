@@ -106,9 +106,12 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 - The **minutes are written by Claude** (the `end` skill), not a script — same
   "scripts manage state, Claude does the intelligence; no API key" split as
   seekerizer. The local `minutes.md` is always kept.
-- Upload destination is chosen once in `setup.py` (`config.json`
-  `upload_target`): `local` | `notion` (via Notion MCP under a parent page) |
-  `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
+- `setup.py` also installs models: `--list-models` shows the menu and
+  `--install-model <name>` downloads `ggml-<name>.bin` from Hugging Face into
+  `~/.cache/whisper.cpp/` (verifies Content-Length so a truncated download fails
+  instead of installing a corrupt model). Upload destination is chosen once in
+  `setup.py` (`config.json` `upload_target`): `local` | `notion` (via Notion MCP
+  under a parent page) | `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
 - Same data-dir rule as seekerizer: `$ECHOGRAM_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
   `~/.claude/echogram`. Needs a **local mic** — useless in a remote/web session.
 - `update` skill = marketplace-update → plugin-update. Simpler than seekerizer's
