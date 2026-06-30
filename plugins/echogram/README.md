@@ -9,7 +9,7 @@ uploaded to **Notion** or **Confluence**.
 /echogram:start  Quarterly planning
 … meeting happens …
 /echogram:end
-→ minutes.md (Summary · Attendees · Discussion · Decisions · Action items)
+→ minutes.md (Agenda · Summary · Conclusion · Action items)
 → uploaded to your configured destination
 ```
 
@@ -110,7 +110,7 @@ A local `minutes.md` is **always** kept, even when uploading elsewhere.
 | `scripts/setup.py` | check dependencies, choose upload target, store config |
 | `skills/setup/` | `/echogram:setup` |
 | `skills/start/` | `/echogram:start` |
-| `skills/end/` | `/echogram:end` — stop → transcribe → Claude writes minutes → upload |
+| `skills/end/` | `/echogram:end` — stop → transcribe → Claude writes minutes (Agenda · Summary · Conclusion · Action items) → upload |
 | `skills/status/` | `/echogram:status` |
 | `skills/update/` | `/echogram:update` — update the plugin to the latest version |
 

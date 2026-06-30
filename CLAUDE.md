@@ -105,7 +105,9 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
   transcription when a live transcript already exists).
 - The **minutes are written by Claude** (the `end` skill), not a script — same
   "scripts manage state, Claude does the intelligence; no API key" split as
-  seekerizer. The local `minutes.md` is always kept.
+  seekerizer. The local `minutes.md` is always kept. The template requires four
+  ordered sections — **아젠다 / 회의 요약 / 결론 / 액션 아이템** (Agenda / Summary /
+  Conclusion / Action items) — with headings localized to the meeting's language.
 - `setup.py` also installs models: `--list-models` shows the menu and
   `--install-model <name>` downloads `ggml-<name>.bin` from Hugging Face into
   `~/.cache/whisper.cpp/` (verifies Content-Length so a truncated download fails
