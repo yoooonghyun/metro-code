@@ -63,7 +63,21 @@ destination. The choice is stored in config.json and reused by `/echogram:end`.
        base_url=https://yourorg.atlassian.net/wiki space_key=ENG parent_page_id=<id>
    ```
 
-6. (Optional) If recording captures the wrong device, set an override:
+6. (Optional) **Connect Google Calendar** so `/echogram:end` can fill the
+   attendees from the meeting invite. Ask the user if they want it; if yes, add
+   Google's official remote MCP and have them authenticate:
+
+   ```bash
+   claude mcp add --transport http google-calendar https://calendarmcp.googleapis.com/mcp/v1
+   ```
+
+   Then they finish the OAuth in `/mcp` (Authenticate). Requires a paid Claude
+   plan and Claude Code v2.1.46+ (which lets claude.ai connectors work in Claude
+   Code); alternatively they can enable the **Google Calendar** connector in
+   claude.ai → Settings → Connectors. If any other Google Calendar MCP is already
+   connected, keep it — `/echogram:end` uses whatever calendar tool is available.
+
+7. (Optional) If recording captures the wrong device, set an override:
    `setup.py --audio-input :1` (macOS index) and confirm with a short test
    recording via `/echogram:start` → `/echogram:end`.
 

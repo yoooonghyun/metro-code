@@ -108,6 +108,17 @@ resolved to workspace users and **@-mentioned** (so they get notified); anyone
 not found is listed as a plain name. No calendar connected → attendees are taken
 from the transcript or omitted.
 
+Connect it during `/echogram:setup` (optional) — it adds Google's official remote
+MCP:
+
+```bash
+claude mcp add --transport http google-calendar https://calendarmcp.googleapis.com/mcp/v1
+```
+
+then authenticate in `/mcp`. Requires a paid Claude plan and Claude Code
+v2.1.46+ (or enable the Google Calendar connector in claude.ai → Settings →
+Connectors). Any other Google Calendar MCP works too.
+
 ## How it works
 
 | File | Role |
