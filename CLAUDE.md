@@ -108,6 +108,14 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
   seekerizer. The local `minutes.md` is always kept. The template requires four
   ordered sections — **아젠다 / 회의 요약 / 결론 / 액션 아이템** (Agenda / Summary /
   Conclusion / Action items) — with headings localized to the meeting's language.
+  If a Google Calendar MCP is connected, the `end` skill matches the event by the
+  meeting's `started_at` and fills 참석자 from its invitees (name+email); on
+  Notion/Confluence upload those attendees are resolved to workspace users and
+  @-mentioned (falling back to plain names). The `setup` skill can connect
+  Google's official remote MCP (`claude mcp add --transport http google-calendar
+  https://calendarmcp.googleapis.com/mcp/v1`, then OAuth via `/mcp`; needs a paid
+  plan + Claude Code v2.1.46+); any calendar MCP works since `end` uses whatever
+  calendar tool is available.
 - `setup.py` also installs models: `--list-models` shows the menu and
   `--install-model <name>` downloads `ggml-<name>.bin` from Hugging Face into
   `~/.cache/whisper.cpp/` (verifies Content-Length so a truncated download fails
