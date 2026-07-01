@@ -99,6 +99,15 @@ python3 $P/transcribe.py <MEETING_DIR>           # prints TRANSCRIPT
 
 A local `minutes.md` is **always** kept, even when uploading elsewhere.
 
+### Attendees (if Google Calendar is connected)
+
+If a Google Calendar MCP/tool is available, `/echogram:end` matches the meeting
+by its start time and fills the **참석자 (attendees)** line from the event's
+invitees. When uploading to **Notion** or **Confluence**, those attendees are
+resolved to workspace users and **@-mentioned** (so they get notified); anyone
+not found is listed as a plain name. No calendar connected → attendees are taken
+from the transcript or omitted.
+
 ## How it works
 
 | File | Role |

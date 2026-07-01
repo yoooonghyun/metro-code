@@ -32,17 +32,27 @@ the transcript — no transcription model is needed for that step.
      ```
      If it reports whisper.cpp/model missing, point the user to `/echogram:setup`.
 
-3. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`.
+3. **Attendees (if Google Calendar is connected).** If a Google Calendar MCP /
+   tool is available (find it with ToolSearch, e.g. a `*calendar*` list-events
+   tool), look up the meeting event and use its invitee list as the attendees:
+   - Match by the meeting's start time — read `started_at` (and `title`) from
+     `<MEETING_DIR>/meta.json` — and pick the event overlapping that time.
+   - Collect each attendee's **display name and email** (keep the email; it's the
+     key for tagging on Notion/Confluence later).
+   - If no calendar tool is connected or no event matches, fall back to names
+     mentioned in the transcript, and otherwise omit 참석자. Never invent people.
+
+4. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`.
 
    Render the section **headings in the meeting's language** (Korean transcript →
    Korean headings, shown below; English transcript → the English equivalents in
    parentheses). These **four sections are required and must appear in this
    order**, even if a section is brief; the metadata header and 참석자 are
-   optional (include when known):
+   optional (include when known — prefer the calendar attendees from step 3):
 
    ```markdown
    # <제목> — <날짜>
-   참석자: <names>            ← optional
+   참석자: <names>            ← from the calendar event when available
 
    ## 아젠다 (Agenda)
    - the topics the meeting set out to cover (as a list)
@@ -58,14 +68,15 @@ the transcript — no transcription model is needed for that step.
    ```
 
    Rules:
-   - Base everything strictly on the transcript; don't invent attendees,
-     decisions, or owners. If something is unknown, write "미정"/"TBD" rather
-     than guessing.
+   - Base everything strictly on the transcript; don't invent decisions or
+     owners. If something is unknown, write "미정"/"TBD" rather than guessing.
+     (Attendees may come from the calendar even if not heard in the transcript.)
    - Each action item is a checkbox with an owner and, when stated, a due date.
    - If the meeting had no clear agenda, infer it from the topics discussed and
      note that it was inferred.
 
-4. Read the upload target and act on it:
+5. Read the upload target and act on it. When uploading, **tag the attendees**
+   (from step 3) as real users where possible — mentions notify them:
 
    ```bash
    cat "$(python3 -c "import sys;sys.path.insert(0,'${CLAUDE_PLUGIN_ROOT}/scripts');import common;print(common.config_path())")"
@@ -74,9 +85,14 @@ the transcript — no transcription model is needed for that step.
    - **local** — nothing more to do; report the saved `minutes.md` path.
    - **notion** — create a page with the minutes via the Notion MCP
      (`notion-create-pages`, load it with ToolSearch first) under the configured
-     `notion.parent_page_id`. Report the new page URL.
+     `notion.parent_page_id`. Resolve each attendee to a Notion user with
+     `notion-get-users` (match by email) and **@-mention** them on the 참석자 line;
+     for anyone not found, leave their plain name. Report the new page URL.
    - **confluence** — create a page via REST (convert the minutes to simple HTML
-     for the storage body):
+     for the storage body). Tag attendees with Confluence user mentions: resolve
+     each email to an `accountId` (`GET <base_url>/rest/api/search?cql=...` or the
+     user API) and put `<ac:link><ri:user ri:account-id="ID"/></ac:link>` on the
+     참석자 line; fall back to plain names when not found.
 
      ```bash
      curl -sS -u "$CONFLUENCE_USER:$CONFLUENCE_TOKEN" \
@@ -89,8 +105,8 @@ the transcript — no transcription model is needed for that step.
 
      Report the resulting page link.
 
-5. Summarize for the user: the title, where the minutes were saved, the upload
-   result, and the action items.
+6. Summarize for the user: the title, attendees, where the minutes were saved,
+   the upload result, and the action items.
 
 ## Notes
 
