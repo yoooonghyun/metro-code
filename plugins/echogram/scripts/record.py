@@ -95,9 +95,10 @@ def cmd_start(args):
     # Live is the default; --batch opts out. If live can't run and the user
     # didn't explicitly ask for it, fall back to batch instead of failing.
     if explicit_live or not explicit_batch:
-        language = load_config().get("language", "auto")
+        cfg = load_config()
+        language = cfg.get("language", "auto")
         binary = find_stream_binary()
-        model = find_model(language)
+        model = find_model(language, cfg.get("model", ""))
         if binary and model:
             return _start_live(title, mid, mdir, binary, model, language)
         if explicit_live:

@@ -32,10 +32,12 @@ uploaded to **Notion** or **Confluence**.
 - [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp) — transcription
   (`brew install whisper-cpp` gives `whisper-cli`) plus a `ggml-*.bin` model.
   `/echogram:setup` can install a model for you — `setup.py --list-models` then
-  `setup.py --install-model small`. Pick **small** or larger for Korean / real
-  meetings (tiny/base are weak, especially for non-English); `.en` variants are
-  English-only. Point at non-standard locations with `WHISPER_BIN` /
-  `WHISPER_MODEL`.
+  `setup.py --install-model large-v3-turbo`. Pick **small** or larger for Korean /
+  real meetings (tiny/base are weak, especially for non-English); **large-v3-turbo**
+  is near-large accuracy but much faster. `.en` variants are English-only. If
+  several are installed, auto-selection prefers higher quality; pin one with
+  `setup.py --model large-v3-turbo`. Point at non-standard locations with
+  `WHISPER_BIN` / `WHISPER_MODEL`.
 - *(optional, for live mode)* `whisper-stream` — whisper.cpp's real-time `stream`
   example (needs an SDL2 build). Set `WHISPER_STREAM_BIN` if it's elsewhere; tune
   with `WHISPER_STREAM_ARGS` (e.g. `"--step 500 --length 5000 -vth 0.6"`).
@@ -80,7 +82,8 @@ Or call the scripts directly:
 P="$CLAUDE_PLUGIN_ROOT/scripts"
 python3 $P/setup.py                              # deps + config status
 python3 $P/setup.py --list-models               # whisper models you can install
-python3 $P/setup.py --install-model small        # download a ggml model
+python3 $P/setup.py --install-model large-v3-turbo   # download a ggml model
+python3 $P/setup.py --model large-v3-turbo       # pin which installed model to use
 python3 $P/setup.py --language ko                # transcription language (auto/ko/en/...)
 python3 $P/setup.py --target notion parent_page_id=<id>
 python3 $P/record.py start "My meeting"

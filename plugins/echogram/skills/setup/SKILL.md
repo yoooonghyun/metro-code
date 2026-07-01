@@ -32,15 +32,23 @@ destination. The choice is stored in config.json and reused by `/echogram:end`.
 
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --list-models
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --install-model small
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --install-model large-v3-turbo
    ```
 
    Present the list and recommend by need: **small** is the CPU-friendly default
-   and works for Korean; **medium**/**large-v3-turbo** for higher accuracy;
+   and works for Korean; **large-v3-turbo** is near-large accuracy but much
+   faster (a great high-quality pick); **medium**/**large-v3** for max accuracy;
    **tiny/base** only for quick/clean English. For an English-only meeting an
    `.en` variant (e.g. `small.en`) is fine; for Korean or mixed audio use a plain
    (multilingual) model. The download lands in `~/.cache/whisper.cpp/` and is
    picked up automatically (override location with `WHISPER_MODEL`).
+
+   If several models are installed, auto-selection prefers higher quality
+   (large-v3-turbo → large-v3 → …). To pin a specific one:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/setup.py" --model large-v3-turbo   # "auto" to unset
+   ```
 
 4. Set the transcription **language** (default `auto`-detects). For a Korean
    meeting you can pin it:

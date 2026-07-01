@@ -31,9 +31,13 @@ MODEL_DIRS = [
 ]
 # Preference order when several models are present (accuracy vs. speed balance).
 # English-only (.en) models are faster but can't transcribe other languages, so
-# they're only preferred when the language is explicitly English.
-ENGLISH_PREF = ["base.en", "small.en", "base", "small", "medium", "large", "tiny"]
-MULTILINGUAL_PREF = ["base", "small", "medium", "large-v3", "large", "tiny"]
+# they're only preferred when the language is explicitly English. large-v3-turbo
+# is a distilled large-v3 — near-large quality but much faster, so it ranks above
+# large among the multilingual options.
+ENGLISH_PREF = ["base.en", "small.en", "base", "small", "medium",
+                "large-v3-turbo", "large-v3", "large", "tiny"]
+MULTILINGUAL_PREF = ["base", "small", "medium",
+                     "large-v3-turbo", "large-v3", "large", "tiny"]
 
 INSTALL_HINT = (
     "whisper.cpp not found. Install it and a model, e.g.:\n"
@@ -54,9 +58,13 @@ def find_binary():
     return which("whisper-cli") or which("whisper-cpp")
 
 
-def find_model(language="auto"):
-    """Pick a ggml model. For non-English languages, prefer a multilingual model
-    and never fall back to an English-only (.en) one (it can't do e.g. Korean)."""
+def find_model(language="auto", prefer=""):
+    """Pick a ggml model.
+
+    A non-empty `prefer` (e.g. "large-v3-turbo") pins a specific model by name
+    when it's installed. Otherwise fall back to the preference order; for
+    non-English languages, prefer a multilingual model and never fall back to an
+    English-only (.en) one (it can't do e.g. Korean)."""
     env = os.environ.get("WHISPER_MODEL")
     if env and os.path.exists(env):
         return env
@@ -70,6 +78,8 @@ def find_model(language="auto"):
                 found.setdefault(key, os.path.join(d, name))
     if not found:
         return None
+    if prefer and prefer in found:      # explicit choice wins when present
+        return found[prefer]
     english_only = language == "en"
     for pref in (ENGLISH_PREF if english_only else MULTILINGUAL_PREF):
         if pref in found:
@@ -141,9 +151,10 @@ def transcribe(meeting_dir):
     if not os.path.exists(wav) or os.path.getsize(wav) == 0:
         print(f"No audio to transcribe at {wav}")
         return 1
-    language = load_config().get("language", "auto")
+    cfg = load_config()
+    language = cfg.get("language", "auto")
     binary = find_binary()
-    model = find_model(language)
+    model = find_model(language, cfg.get("model", ""))
     if not binary or not model:
         print(INSTALL_HINT)
         return 1

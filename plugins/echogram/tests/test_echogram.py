@@ -248,6 +248,18 @@ class TestMonitor(Base):
 
 
 class TestTranscribe(Base):
+    def setUp(self):
+        super().setUp()
+        # Snapshot module globals some tests monkeypatch, so one test can't
+        # clobber find_model/etc. for a later one (tests run alphabetically).
+        self._snap = (transcribe.find_binary, transcribe.find_model,
+                      transcribe.MODEL_DIRS, transcribe.subprocess.run)
+
+    def tearDown(self):
+        (transcribe.find_binary, transcribe.find_model,
+         transcribe.MODEL_DIRS, transcribe.subprocess.run) = self._snap
+        super().tearDown()
+
     def test_dedup_transcript(self):
         raw = ("[00:00:00.000 --> 00:00:02.000]  hello\n"
                "[00:00:00.000 --> 00:00:02.000]  hello there\n"   # same ts -> overwrite
@@ -287,6 +299,39 @@ class TestTranscribe(Base):
             self.assertTrue(transcribe.find_model("en").endswith("ggml-base.en.bin"))
             self.assertTrue(transcribe.find_model("ko").endswith("ggml-base.bin"))
             self.assertTrue(transcribe.find_model("auto").endswith("ggml-base.bin"))
+        finally:
+            transcribe.MODEL_DIRS = orig
+
+    def test_turbo_preferred_over_large_and_used_alone(self):
+        md = tempfile.mkdtemp()
+        for n in ("ggml-large-v3.bin", "ggml-large-v3-turbo.bin"):
+            open(os.path.join(md, n), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            # turbo ranks above large-v3 in the auto preference
+            self.assertTrue(transcribe.find_model("auto").endswith("ggml-large-v3-turbo.bin"))
+            # and it's found when it's the only model present
+            md2 = tempfile.mkdtemp()
+            open(os.path.join(md2, "ggml-large-v3-turbo.bin"), "w").close()
+            transcribe.MODEL_DIRS = [md2]
+            self.assertTrue(transcribe.find_model("ko").endswith("ggml-large-v3-turbo.bin"))
+        finally:
+            transcribe.MODEL_DIRS = orig
+
+    def test_prefer_pins_model(self):
+        md = tempfile.mkdtemp()
+        for n in ("ggml-small.bin", "ggml-large-v3-turbo.bin"):
+            open(os.path.join(md, n), "w").close()
+        orig = transcribe.MODEL_DIRS
+        transcribe.MODEL_DIRS = [md]
+        try:
+            # without prefer, small wins (earlier in pref); with prefer, turbo wins
+            self.assertTrue(transcribe.find_model("auto").endswith("ggml-small.bin"))
+            self.assertTrue(transcribe.find_model("auto", "large-v3-turbo")
+                            .endswith("ggml-large-v3-turbo.bin"))
+            # prefer that isn't installed -> fall back to auto
+            self.assertTrue(transcribe.find_model("auto", "medium").endswith("ggml-small.bin"))
         finally:
             transcribe.MODEL_DIRS = orig
 
@@ -360,6 +405,22 @@ class TestSetup(Base):
         self.assertEqual(rv, 0)
         self.assertIn("small", out)
         self.assertIn("medium", out)
+        self.assertIn("large-v3-turbo", out)
+
+    def test_model_pin_and_unset(self):
+        rv, _ = self.run_capture(setup_mod.main, ["--model", "large-v3-turbo"])
+        self.assertEqual(rv, 0)
+        self.assertEqual(common.load_config()["model"], "large-v3-turbo")
+        self.run_capture(setup_mod.main, ["--model", "auto"])   # unset
+        self.assertEqual(common.load_config()["model"], "")
+
+    def test_install_turbo_already_present(self):
+        os.environ["WHISPER_MODEL_DIR"] = self.tmp
+        with open(os.path.join(self.tmp, "ggml-large-v3-turbo.bin"), "w") as f:
+            f.write("x")
+        rv, out = self.run_capture(setup_mod.main, ["--install-model", "large-v3-turbo"])
+        self.assertEqual(rv, 0)
+        self.assertIn("Already installed", out)
 
     def test_install_unknown_model(self):
         rv, out = self.run_capture(setup_mod.main, ["--install-model", "humongous"])

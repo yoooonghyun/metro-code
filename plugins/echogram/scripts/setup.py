@@ -12,7 +12,8 @@ Usage:
     setup.py --audio-input :1     # override the ffmpeg input device (optional)
     setup.py --language ko        # transcription language ("auto", "ko", "en", ...)
     setup.py --list-models        # show whisper models you can install
-    setup.py --install-model small  # download a ggml model from Hugging Face
+    setup.py --install-model large-v3-turbo  # download a ggml model from Hugging Face
+    setup.py --model large-v3-turbo  # pin which installed model to use ("auto" to unset)
 
 Destinations:
     local       save minutes.md only (always also saved locally)
@@ -102,10 +103,10 @@ def install_model(name):
     return 0
 
 
-def deps_status(language="auto"):
+def deps_status(language="auto", prefer=""):
     ffmpeg = which("ffmpeg")
     binary = find_binary()
-    model = find_model(language)
+    model = find_model(language, prefer)
     stream = find_stream_binary()
     print("Dependencies:")
     print(f"  ffmpeg          {'✓ ' + ffmpeg if ffmpeg else '✗ missing (brew/apt install ffmpeg)'}")
@@ -128,6 +129,7 @@ def print_config(cfg):
         print(f"  confluence.space_key      = {c.get('space_key') or '(unset)'}")
         print(f"  confluence.parent_page_id = {c.get('parent_page_id') or '(unset)'}")
     print(f"  language = {cfg.get('language', 'auto')}")
+    print(f"  model    = {cfg.get('model') or 'auto'}")
     if cfg.get("audio_input"):
         print(f"  audio_input = {cfg['audio_input']}")
 
@@ -176,6 +178,18 @@ def main(argv):
             print(f"language set to {cfg['language']}")
             return 0
 
+    if "--model" in argv:
+        i = argv.index("--model")
+        if i + 1 < len(argv):
+            name = argv[i + 1]
+            cfg["model"] = "" if name in ("auto", "") else name
+            save_config(cfg)
+            print(f"model set to {cfg['model'] or 'auto'}")
+            if cfg["model"] and not find_model(cfg.get("language", "auto"), cfg["model"]):
+                print(f"Note: ggml-{cfg['model']}.bin isn't installed yet — "
+                      f"setup.py --install-model {cfg['model']}")
+            return 0
+
     if "--target" in argv:
         i = argv.index("--target")
         target = argv[i + 1] if i + 1 < len(argv) else ""
@@ -196,10 +210,10 @@ def main(argv):
 
     # No action flags: report status.
     language = cfg.get("language", "auto")
-    ok = deps_status(language)
+    ok = deps_status(language, cfg.get("model", ""))
     print()
     print_config(cfg)
-    if not find_model(language):
+    if not find_model(language, cfg.get("model", "")):
         print("\nNo whisper model installed. Pick one with:  setup.py --list-models")
         print("then e.g.  setup.py --install-model small")
     if not ok:
