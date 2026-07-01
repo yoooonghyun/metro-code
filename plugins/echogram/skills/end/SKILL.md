@@ -32,30 +32,38 @@ the transcript — no transcription model is needed for that step.
      ```
      If it reports whisper.cpp/model missing, point the user to `/echogram:setup`.
 
-3. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`
-   using this structure (keep the user's language; omit empty sections):
+3. Read the transcript file and write **minutes** to `<MEETING_DIR>/minutes.md`.
+
+   Render the section **headings in the meeting's language** (Korean transcript →
+   Korean headings, shown below; English transcript → the English equivalents in
+   parentheses). These **four sections are required and must appear in this
+   order**, even if a section is brief; the metadata header and 참석자 are
+   optional (include when known):
 
    ```markdown
-   # <title> — <date>
+   # <제목> — <날짜>
+   참석자: <names>            ← optional
 
-   ## Summary
-   2–4 sentences.
+   ## 아젠다 (Agenda)
+   - the topics the meeting set out to cover (as a list)
 
-   ## Attendees
-   - …
+   ## 회의 요약 (Summary)
+   - a concise narrative of what was actually discussed (bullets or 3–6 sentences)
 
-   ## Discussion
-   - key points by topic
+   ## 결론 (Conclusion)
+   - the decisions reached and the agreed outcome
 
-   ## Decisions
-   - …
-
-   ## Action items
-   - [ ] <owner> — <task> (due <date>)
-
-   ## Open questions / Next steps
-   - …
+   ## 액션 아이템 (Action items)
+   - [ ] <담당자> — <할 일> (기한: <날짜>)
    ```
+
+   Rules:
+   - Base everything strictly on the transcript; don't invent attendees,
+     decisions, or owners. If something is unknown, write "미정"/"TBD" rather
+     than guessing.
+   - Each action item is a checkbox with an owner and, when stated, a due date.
+   - If the meeting had no clear agenda, infer it from the topics discussed and
+     note that it was inferred.
 
 4. Read the upload target and act on it:
 

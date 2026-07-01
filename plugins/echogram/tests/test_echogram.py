@@ -30,7 +30,7 @@ class Base(unittest.TestCase):
 
     def tearDown(self):
         os.environ.pop("ECHOGRAM_DATA_DIR", None)
-        for v in ("WHISPER_BIN", "WHISPER_MODEL"):
+        for v in ("WHISPER_BIN", "WHISPER_MODEL", "WHISPER_MODEL_DIR"):
             os.environ.pop(v, None)
 
     @staticmethod
@@ -354,6 +354,51 @@ class TestSetup(Base):
         rv, _ = self.run_capture(setup_mod.main, ["--language", "ko"])
         self.assertEqual(rv, 0)
         self.assertEqual(common.load_config()["language"], "ko")
+
+    def test_list_models(self):
+        rv, out = self.run_capture(setup_mod.main, ["--list-models"])
+        self.assertEqual(rv, 0)
+        self.assertIn("small", out)
+        self.assertIn("medium", out)
+
+    def test_install_unknown_model(self):
+        rv, out = self.run_capture(setup_mod.main, ["--install-model", "humongous"])
+        self.assertEqual(rv, 1)
+        self.assertIn("Unknown model", out)
+
+    def test_install_model_already_present(self):
+        os.environ["WHISPER_MODEL_DIR"] = self.tmp
+        with open(os.path.join(self.tmp, "ggml-small.bin"), "w") as f:
+            f.write("x")
+        rv, out = self.run_capture(setup_mod.main, ["--install-model", "small"])
+        self.assertEqual(rv, 0)
+        self.assertIn("Already installed", out)
+
+    def test_install_model_downloads(self):
+        os.environ["WHISPER_MODEL_DIR"] = self.tmp
+
+        class FakeResp:
+            headers = {"Content-Length": "6"}
+
+            def __enter__(self):
+                self._chunks = [b"abc", b"def"]
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self, n):
+                return self._chunks.pop(0) if self._chunks else b""
+
+        orig = setup_mod.urllib.request.urlopen
+        setup_mod.urllib.request.urlopen = lambda *a, **k: FakeResp()
+        try:
+            rv, out = self.run_capture(setup_mod.main, ["--install-model", "tiny.en"])
+        finally:
+            setup_mod.urllib.request.urlopen = orig
+        self.assertEqual(rv, 0)
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, "ggml-tiny.en.bin")))
+        self.assertIn("Installed", out)
 
     def test_target_notion_with_param(self):
         self.run_capture(setup_mod.main, ["--target", "notion", "parent_page_id=PAGE1"])

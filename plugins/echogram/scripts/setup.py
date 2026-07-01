@@ -11,6 +11,8 @@ Usage:
     setup.py --target confluence base_url=<url> space_key=<key> parent_page_id=<id>
     setup.py --audio-input :1     # override the ffmpeg input device (optional)
     setup.py --language ko        # transcription language ("auto", "ko", "en", ...)
+    setup.py --list-models        # show whisper models you can install
+    setup.py --install-model small  # download a ggml model from Hugging Face
 
 Destinations:
     local       save minutes.md only (always also saved locally)
@@ -20,10 +22,84 @@ Destinations:
 """
 import os
 import sys
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import which, load_config, save_config, UPLOAD_TARGETS  # noqa: E402
 from transcribe import find_binary, find_model, find_stream_binary  # noqa: E402
+
+# whisper.cpp ggml models, hosted on Hugging Face. Append ".en" for an
+# English-only variant of tiny/base/small/medium.
+HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
+MODELS = [
+    ("tiny",           "75 MB",  "fastest, lowest quality — clean English only"),
+    ("base",           "142 MB", "fast, basic quality"),
+    ("small",          "466 MB", "balanced; good for Korean — CPU-friendly"),
+    ("medium",         "1.5 GB", "high quality; slower on CPU"),
+    ("large-v3-turbo", "1.6 GB", "near-large quality, faster"),
+    ("large-v3",       "2.9 GB", "best quality; needs a strong CPU/GPU"),
+]
+MODEL_NAMES = {m[0] for m in MODELS}
+
+
+def model_install_dir():
+    d = os.environ.get("WHISPER_MODEL_DIR") or os.path.expanduser("~/.cache/whisper.cpp")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def list_models():
+    print("Whisper models (append .en for an English-only tiny/base/small/medium):")
+    for name, size, note in MODELS:
+        print(f"  {name:16} {size:>7}  {note}")
+    print("\nInstall one:  setup.py --install-model small")
+    print("For Korean or most real meetings, use small or larger (not tiny/base).")
+
+
+def install_model(name):
+    base = name[:-3] if name.endswith(".en") else name
+    if base not in MODEL_NAMES:
+        print(f"Unknown model '{name}'.")
+        list_models()
+        return 1
+    fname = f"ggml-{name}.bin"
+    dest = os.path.join(model_install_dir(), fname)
+    if os.path.exists(dest) and os.path.getsize(dest) > 0:
+        print(f"Already installed: {dest}")
+        return 0
+    url = HF_BASE + fname
+    print(f"Downloading {fname} …")
+    tmp = dest + ".part"
+    try:
+        with urllib.request.urlopen(url, timeout=60) as resp:
+            total = int(resp.headers.get("Content-Length", 0) or 0)
+            done, last = 0, -10
+            with open(tmp, "wb") as f:
+                while True:
+                    chunk = resp.read(1 << 20)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    done += len(chunk)
+                    if total:
+                        pct = done * 100 // total
+                        if pct >= last + 10:
+                            last = pct - pct % 10
+                            print(f"  {pct:3d}%  ({done >> 20} MB)", flush=True)
+        if total and done != total:
+            raise IOError(f"incomplete download: {done} of {total} bytes")
+        os.replace(tmp, dest)
+    except Exception as e:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        print(f"Download failed: {e}")
+        print(f"Download it manually into {model_install_dir()}:\n  {url}")
+        return 1
+    print(f"Installed: {dest}")
+    print("It will be picked up automatically next time you transcribe.")
+    return 0
 
 
 def deps_status(language="auto"):
@@ -74,6 +150,17 @@ def apply_params(cfg, target, params):
 def main(argv):
     cfg = load_config()
 
+    if "--list-models" in argv:
+        list_models()
+        return 0
+
+    if "--install-model" in argv:
+        i = argv.index("--install-model")
+        if i + 1 >= len(argv):
+            list_models()
+            return 1
+        return install_model(argv[i + 1])
+
     if "--audio-input" in argv:
         i = argv.index("--audio-input")
         if i + 1 < len(argv):
@@ -108,9 +195,13 @@ def main(argv):
         return 0
 
     # No action flags: report status.
-    ok = deps_status(cfg.get("language", "auto"))
+    language = cfg.get("language", "auto")
+    ok = deps_status(language)
     print()
     print_config(cfg)
+    if not find_model(language):
+        print("\nNo whisper model installed. Pick one with:  setup.py --list-models")
+        print("then e.g.  setup.py --install-model small")
     if not ok:
         print("\nInstall the missing dependencies above, then re-run /echogram:setup.")
     return 0
