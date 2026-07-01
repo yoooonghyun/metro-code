@@ -33,6 +33,8 @@ DEFAULT_CONFIG = {
     # whisper language: "auto" detects, or a code like "ko"/"en"/"ja". Drives
     # both transcription and model choice (non-English avoids .en-only models).
     "language": "auto",
+    # preferred model name (e.g. "large-v3-turbo"); "" = auto-pick by preference.
+    "model": "",
 }
 
 

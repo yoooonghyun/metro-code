@@ -119,7 +119,10 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 - `setup.py` also installs models: `--list-models` shows the menu and
   `--install-model <name>` downloads `ggml-<name>.bin` from Hugging Face into
   `~/.cache/whisper.cpp/` (verifies Content-Length so a truncated download fails
-  instead of installing a corrupt model). Upload destination is chosen once in
+  instead of installing a corrupt model). Auto-selection (`find_model`) ranks
+  quality (large-v3-turbo → large-v3 → large → medium → small → base), and a
+  `config.json` `model` (set via `--model`, honored by `find_model(prefer=…)`)
+  pins a specific one. Upload destination is chosen once in
   `setup.py` (`config.json` `upload_target`): `local` | `notion` (via Notion MCP
   under a parent page) | `confluence` (REST, `$CONFLUENCE_TOKEN`/`$CONFLUENCE_USER`).
 - Same data-dir rule as seekerizer: `$ECHOGRAM_DATA_DIR` → `$CLAUDE_PLUGIN_DATA` →
