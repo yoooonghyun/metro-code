@@ -125,10 +125,45 @@ def _count(counter, key):
     counter[key] = counter.get(key, 0) + 1
 
 
+def _tool_params(ev):
+    """tool_parameters attribute (present with OTEL_LOG_TOOL_DETAILS=1)."""
+    raw = ev.get("tool_parameters")
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except ValueError:
+            return {}
+    return {}
+
+
+def _classify(ev, tool, skills, agents, mcp):
+    """Attribute a tool event to a skill / subagent / MCP server when possible."""
+    params = _tool_params(ev)
+    if tool and tool.startswith("mcp__"):
+        parts = tool.split("__")
+        if len(parts) >= 2:
+            _count(mcp, parts[1])
+        return
+    lowered = {k.lower(): v for k, v in params.items() if isinstance(v, str)}
+    if tool == "Skill" or any("skill" in k for k in lowered):
+        name = next((v for k, v in lowered.items() if "skill" in k), None) or \
+            lowered.get("command") or "(unnamed)"
+        _count(skills, name)
+    elif tool in ("Task", "Agent") or any("subagent" in k or "agent_type" in k
+                                          for k in lowered):
+        kind = next((v for k, v in lowered.items()
+                     if "subagent" in k or "agent_type" in k), None) or "(default)"
+        _count(agents, kind)
+
+
 def events_digest(events):
     if not events:
         return ["(no claude_code log events found in this window)"]
     by_name, decisions, tools, errors = {}, {}, {}, []
+    skills, agents, mcp, failures = {}, {}, {}, {}
     for ev in events:
         name = _field(ev, "event.name", "event_name", "name") or "(unknown)"
         _count(by_name, name)
@@ -143,6 +178,10 @@ def events_digest(events):
             tool = _field(ev, "tool_name", "tool")
             if tool:
                 _count(tools, f"used:{tool}")
+                if (_field(ev, "success", "is_error") or "").lower() in ("false", "true") \
+                        and (_field(ev, "success") or "").lower() == "false":
+                    _count(failures, tool)
+            _classify(ev, tool, skills, agents, mcp)
         elif "api_error" in name and len(errors) < 5:
             errors.append(_field(ev, "error", "message", "body") or "(no detail)")
 
@@ -158,6 +197,18 @@ def events_digest(events):
     if tools:
         lines.append("- tool usage / non-default decisions (top):")
         lines += [f"    - {k}: {v}" for k, v in top(tools)]
+    if skills:
+        lines.append("- skills invoked:")
+        lines += [f"    - {k}: {v}" for k, v in top(skills)]
+    if agents:
+        lines.append("- subagents spawned:")
+        lines += [f"    - {k}: {v}" for k, v in top(agents)]
+    if mcp:
+        lines.append("- MCP servers used:")
+        lines += [f"    - {k}: {v}" for k, v in top(mcp)]
+    if failures:
+        lines.append("- tool failures (success=false):")
+        lines += [f"    - {k}: {v}" for k, v in top(failures)]
     if errors:
         lines.append("- recent api_error samples:")
         lines += [f"    - {e[:200]}" for e in errors]

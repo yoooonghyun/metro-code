@@ -28,12 +28,18 @@ The scripts only fetch data — you (Claude) do the analysis.
    `OTEL_LOG_TOOL_DETAILS=1` env (installed by current telemetro; older installs
    should re-run `otel.py install`).
 
-2. Read the **intent** side of the comparison:
+2. Enumerate the **intent** side of the comparison:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/inventory.py"
+   ```
+
+   (declared skills, subagents, MCP servers — memory-type ones flagged — and
+   CLAUDE.md tiers with staleness). Then read the contents behind it:
    - project `CLAUDE.md` (and `~/.claude/CLAUDE.md` if present) — the stated
      rules and conventions
    - `.claude/settings.json` + `~/.claude/settings.json` — `permissions`
      (allow/deny/ask) and `hooks`
-   - available skills (project/plugin) — what workflows are supposed to be used
 
 3. Write the diagnosis, grounded strictly in the digest numbers. Structure:
 
@@ -48,9 +54,29 @@ The scripts only fetch data — you (Claude) do the analysis.
    - Frequent `accept` with source `user_temporary`/`user_permanent` on the same
      tool = the user keeps approving the same thing → propose an allowlist entry
      (quote the exact `permissions.allow` rule to add).
-   - Tools/skills that CLAUDE.md tells Claude to use but that never appear in
-     the events (e.g. a test-runner script, `/plugin` skills) → the instruction
-     isn't landing; suggest wording/trigger fixes.
+
+   **🧩 Skills** — inventory vs. "skills invoked" in the digest:
+   - Declared but never invoked (especially ones CLAUDE.md mandates, like a
+     test-runner) → dead weight or a trigger problem; suggest a sharper
+     `description` (trigger phrases) or removal.
+   - High failure counts on a skill's underlying tools → the skill fires but
+     doesn't work; inspect its SKILL.md steps.
+
+   **🤖 Subagents** — inventory vs. "subagents spawned":
+   - Defined agents that never run → their `description` doesn't match real
+     tasks; propose rewording or dropping them.
+   - A general-purpose agent doing work a specialized declared agent was built
+     for → the specialized one isn't being selected; sharpen its description.
+
+   **🧠 Memory** — if a memory-type MCP server is configured (flagged in the
+   inventory):
+   - Zero usage in "MCP servers used" = it's wired but never consulted →
+     propose a CLAUDE.md line telling Claude when to read/write it, or remove
+     the server.
+   - Also check CLAUDE.md staleness: a memory file untouched for >30 days while
+     `user_reject` keeps recurring means corrections aren't being written back —
+     the self-improvement loop is broken; propose adding the recurring
+     corrections to CLAUDE.md now.
 
    **📉 Health & cost**
    - `api_error` clusters, token/cost outliers by model, unusually heavy tools —
