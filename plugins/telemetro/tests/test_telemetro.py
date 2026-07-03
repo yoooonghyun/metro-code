@@ -295,6 +295,24 @@ class TestEventClassification(Base):
         self.assertIn("MCP servers used", out)
         self.assertIn("memory: 2", out)
 
+    def test_bash_command_heads(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "python3 /a/b/scripts/record.py start foo"})},
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "git push -u origin main && echo ok"})},
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "python3 /a/b/scripts/record.py stop | tail -1"})},
+        ]
+        out = self._digest(events)
+        self.assertIn("raw bash commands", out)
+        self.assertIn("python3 record.py: 2", out)   # path stripped, aggregated
+        self.assertIn("git push: 1", out)
+        self.assertNotIn("echo ok", out)             # only the head survives
+
     def test_tool_failures_counted(self):
         events = [
             {"event.name": "claude_code.tool_result", "tool_name": "Bash",

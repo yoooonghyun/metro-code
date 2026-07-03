@@ -55,18 +55,34 @@ The scripts only fetch data — you (Claude) do the analysis.
      tool = the user keeps approving the same thing → propose an allowlist entry
      (quote the exact `permissions.allow` rule to add).
 
-   **🧩 Skills** — inventory vs. "skills invoked" in the digest:
-   - Declared but never invoked (especially ones CLAUDE.md mandates, like a
-     test-runner) → dead weight or a trigger problem; suggest a sharper
-     `description` (trigger phrases) or removal.
-   - High failure counts on a skill's underlying tools → the skill fires but
-     doesn't work; inspect its SKILL.md steps.
+   **🧩 Skills** — judge against *situations*, not mere non-use. For each
+   declared skill, read its SKILL.md to derive its **capability signature**
+   (the commands/scripts/MCP tools its steps wrap), then:
+   - **Should have fired but didn't**: the digest's "raw bash commands" /
+     tool usage shows the skill's underlying work happening *outside* skill
+     invocations (e.g. its wrapped script run by hand while "skills invoked"
+     shows nothing) → the trigger isn't matching real requests; propose
+     sharper `description` trigger phrases.
+   - **Fired but deviated from its spec**: for invoked skills, compare the
+     SKILL.md step sequence against what the events show around those
+     invocations — a mandated step's tool never appears (e.g. an upload MCP
+     call missing after a finish-skill), or its underlying tools show high
+     failure counts → the skill fires but doesn't do what it promises; point
+     at the diverging step.
+   - No matching situation in the window → say "no evidence either way";
+     don't flag unused skills as a problem by themselves.
 
-   **🤖 Subagents** — inventory vs. "subagents spawned":
-   - Defined agents that never run → their `description` doesn't match real
-     tasks; propose rewording or dropping them.
-   - A general-purpose agent doing work a specialized declared agent was built
-     for → the specialized one isn't being selected; sharpen its description.
+   **🤖 Subagents** — same two lenses:
+   - **Missed delegation**: work matching a declared agent's description was
+     handled inline or by a general-purpose `Task` (digest shows generic
+     spawns / heavy inline tool runs of that kind) while that agent never
+     spawned → its description isn't being selected; propose rewording.
+   - **Spec deviation**: a spawned agent whose surrounding tool activity
+     contradicts its description (e.g. a read-only reviewer followed by edit
+     tool bursts) → tighten its allowed tools or description.
+   - If prompt-level matching is needed, note the user can opt in to
+     `OTEL_LOG_USER_PROMPTS=1` (prompt content in events — local-only, but a
+     privacy tradeoff; off by default).
 
    **🧠 Memory** — if a memory-type MCP server is configured (flagged in the
    inventory):

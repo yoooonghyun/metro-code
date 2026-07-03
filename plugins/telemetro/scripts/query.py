@@ -139,8 +139,8 @@ def _tool_params(ev):
     return {}
 
 
-def _classify(ev, tool, skills, agents, mcp):
-    """Attribute a tool event to a skill / subagent / MCP server when possible."""
+def _classify(ev, tool, skills, agents, mcp, bash):
+    """Attribute a tool event to a skill / subagent / MCP server / raw command."""
     params = _tool_params(ev)
     if tool and tool.startswith("mcp__"):
         parts = tool.split("__")
@@ -157,13 +157,24 @@ def _classify(ev, tool, skills, agents, mcp):
         kind = next((v for k, v in lowered.items()
                      if "subagent" in k or "agent_type" in k), None) or "(default)"
         _count(agents, kind)
+    elif tool == "Bash":
+        # Head of the command line (e.g. "python3 x/y/manage.py" -> "python3
+        # …/manage.py", "git push …" -> "git push"): lets diagnose match work
+        # that skills are supposed to wrap but that ran as raw commands.
+        cmd = lowered.get("command", "")
+        if cmd:
+            head = cmd.strip().split("\n")[0].split(";")[0].split("|")[0]
+            toks = head.split()
+            key = " ".join(os.path.basename(t) if "/" in t else t
+                           for t in toks[:2]) if toks else "(empty)"
+            _count(bash, key)
 
 
 def events_digest(events):
     if not events:
         return ["(no claude_code log events found in this window)"]
     by_name, decisions, tools, errors = {}, {}, {}, []
-    skills, agents, mcp, failures = {}, {}, {}, {}
+    skills, agents, mcp, failures, bash = {}, {}, {}, {}, {}
     for ev in events:
         name = _field(ev, "event.name", "event_name", "name") or "(unknown)"
         _count(by_name, name)
@@ -181,7 +192,7 @@ def events_digest(events):
                 if (_field(ev, "success", "is_error") or "").lower() in ("false", "true") \
                         and (_field(ev, "success") or "").lower() == "false":
                     _count(failures, tool)
-            _classify(ev, tool, skills, agents, mcp)
+            _classify(ev, tool, skills, agents, mcp, bash)
         elif "api_error" in name and len(errors) < 5:
             errors.append(_field(ev, "error", "message", "body") or "(no detail)")
 
@@ -206,6 +217,9 @@ def events_digest(events):
     if mcp:
         lines.append("- MCP servers used:")
         lines += [f"    - {k}: {v}" for k, v in top(mcp)]
+    if bash:
+        lines.append("- raw bash commands (top, by head):")
+        lines += [f"    - {k}: {v}" for k, v in top(bash)]
     if failures:
         lines.append("- tool failures (success=false):")
         lines += [f"    - {k}: {v}" for k, v in top(failures)]
