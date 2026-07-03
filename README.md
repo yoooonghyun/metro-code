@@ -51,6 +51,33 @@ Korean (KOSPI/KOSDAQ), Tokyo, and other markets, plus crypto.
 
 See [`plugins/seekerizer/README.md`](plugins/seekerizer/README.md) for details.
 
+### `echogram` — meeting recorder → minutes
+
+Record a meeting locally, transcribe it with **whisper.cpp** (live transcription
+by default, Korean supported), and let Claude turn it into structured minutes
+(아젠다 · 회의 요약 · 결론 · 액션 아이템) — saved locally and optionally uploaded to
+**Notion** or **Confluence** with attendees pulled from Google Calendar and
+@-mentioned. No API key; everything runs on your machine.
+
+```text
+/echogram:start 분기 계획 회의  →  … meeting …  →  /echogram:end
+```
+
+See [`plugins/echogram/README.md`](plugins/echogram/README.md) for details.
+
+### `telemetro` — Claude Code usage monitoring
+
+Enables Claude Code's built-in **OpenTelemetry** export and runs a local
+**Grafana** stack (grafana/otel-lgtm) to receive it — tokens, cost, sessions,
+tool events on a dashboard at `localhost:3000`. Respects an existing OTLP
+collector (starts nothing if one is already listening).
+
+```text
+/telemetro:init  →  restart  →  http://localhost:3000
+```
+
+See [`plugins/telemetro/README.md`](plugins/telemetro/README.md) for details.
+
 ## Repository layout
 
 ```
@@ -58,18 +85,26 @@ metro-code/
 ├── .claude-plugin/
 │   └── marketplace.json            # marketplace catalog
 └── plugins/
-    └── seekerizer/                 # the plugin
-        ├── .claude-plugin/plugin.json
-        ├── scripts/                # python (stdlib only)
-        ├── skills/                 # one skill per action
-        │   ├── add-symbol/         # add a stock
-        │   ├── remove-symbol/      # remove / clear stocks
-        │   ├── alias-symbol/       # custom display label (e.g. Korean)
-        │   ├── list-symbols/       # show watchlist & targets
-        │   ├── set-target/         # price-target alerts
-        │   ├── setup/              # one-time status line install
-        │   └── update/             # update the plugin to the latest version
-        └── README.md
+    ├── seekerizer/                 # stock ticker + price-target alerts
+    │   ├── .claude-plugin/plugin.json
+    │   ├── scripts/                # python (stdlib only)
+    │   ├── skills/                 # one skill per action
+    │   │   ├── add-symbol/         # add a stock
+    │   │   ├── remove-symbol/      # remove / clear stocks
+    │   │   ├── alias-symbol/       # custom display label (e.g. Korean)
+    │   │   ├── list-symbols/       # show watchlist & targets
+    │   │   ├── set-target/         # price-target alerts
+    │   │   ├── setup/              # one-time status line install
+    │   │   └── update/             # update the plugin to the latest version
+    │   └── README.md
+    ├── echogram/                   # meeting recorder → minutes
+    │   ├── scripts/                # record / transcribe / setup / monitor
+    │   ├── skills/                 # setup · start · end · status · update
+    │   └── tests/
+    └── telemetro/                  # Claude Code monitoring (OTel + Grafana)
+        ├── scripts/                # otel.py · stack.py
+        ├── skills/                 # init · status · stop · update
+        └── tests/
 ```
 
 ## Conventions

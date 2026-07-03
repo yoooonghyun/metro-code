@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Offline test suite for the telemetro plugin (stdlib unittest only).
+
+Docker/podman and network sockets are mocked, so these run with no container
+runtime and no listeners. Run from anywhere:
+
+    python3 plugins/telemetro/tests/test_telemetro.py
+"""
+import io
+import json
+import os
+import sys
+import tempfile
+import contextlib
+import unittest
+
+SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
+sys.path.insert(0, SCRIPTS)
+
+import common  # noqa: E402
+import otel    # noqa: E402
+import stack   # noqa: E402
+
+
+class Base(unittest.TestCase):
+    def setUp(self):
+        self.home = tempfile.mkdtemp()
+        os.environ["HOME"] = self.home
+        os.environ["TELEMETRO_DATA_DIR"] = tempfile.mkdtemp()
+        self.settings = os.path.join(self.home, ".claude", "settings.json")
+
+    def tearDown(self):
+        os.environ.pop("TELEMETRO_DATA_DIR", None)
+
+    @staticmethod
+    def run_capture(fn, *a, **k):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rv = fn(*a, **k)
+        return rv, buf.getvalue()
+
+    def read_settings(self):
+        return common.load_json(self.settings, {})
+
+
+class TestOtel(Base):
+    def test_install_writes_env(self):
+        rv, out = self.run_capture(otel.main, ["install"])
+        self.assertEqual(rv, 0)
+        env = self.read_settings()["env"]
+        self.assertEqual(env["CLAUDE_CODE_ENABLE_TELEMETRY"], "1")
+        self.assertEqual(env["OTEL_METRICS_EXPORTER"], "otlp")
+        self.assertEqual(env["OTEL_EXPORTER_OTLP_ENDPOINT"], "http://localhost:4317")
+        self.assertIn("Start a new Claude Code session", out)
+
+    def test_install_custom_endpoint(self):
+        self.run_capture(otel.main, ["install", "--endpoint", "http://otel.corp:4317"])
+        env = self.read_settings()["env"]
+        self.assertEqual(env["OTEL_EXPORTER_OTLP_ENDPOINT"], "http://otel.corp:4317")
+
+    def test_install_preserves_other_settings(self):
+        common.save_json(self.settings, {"theme": "dark", "env": {"FOO": "bar"}})
+        self.run_capture(otel.main, ["install"])
+        s = self.read_settings()
+        self.assertEqual(s["theme"], "dark")
+        self.assertEqual(s["env"]["FOO"], "bar")
+        self.assertEqual(s["env"]["OTEL_METRICS_EXPORTER"], "otlp")
+
+    def test_install_refuses_conflicts_without_force(self):
+        common.save_json(self.settings, {"env": {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://other:4317"}})
+        rv, out = self.run_capture(otel.main, ["install"])
+        self.assertEqual(rv, 1)
+        self.assertIn("different values", out)
+        # unchanged
+        self.assertEqual(self.read_settings()["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"],
+                         "http://other:4317")
+        rv, _ = self.run_capture(otel.main, ["install", "--force"])
+        self.assertEqual(rv, 0)
+        self.assertEqual(self.read_settings()["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"],
+                         "http://localhost:4317")
+
+    def test_remove_only_our_keys(self):
+        common.save_json(self.settings, {"env": {"FOO": "bar"}})
+        self.run_capture(otel.main, ["install"])
+        rv, _ = self.run_capture(otel.main, ["remove"])
+        self.assertEqual(rv, 0)
+        env = self.read_settings()["env"]
+        self.assertEqual(env, {"FOO": "bar"})     # ours gone, theirs kept
+
+    def test_remove_drops_empty_env(self):
+        self.run_capture(otel.main, ["install"])
+        self.run_capture(otel.main, ["remove"])
+        self.assertNotIn("env", self.read_settings())
+
+    def test_status_states(self):
+        _, out = self.run_capture(otel.main, ["status"])
+        self.assertIn("not configured", out)
+        self.run_capture(otel.main, ["install"])
+        _, out = self.run_capture(otel.main, ["status"])
+        self.assertIn("ENABLED", out)
+        # partial: drop one key
+        s = self.read_settings()
+        del s["env"]["OTEL_LOGS_EXPORTER"]
+        common.save_json(self.settings, s)
+        _, out = self.run_capture(otel.main, ["status"])
+        self.assertIn("PARTIAL", out)
+
+
+class FakeRun:
+    """Programmable subprocess.run replacement for the container CLI."""
+
+    def __init__(self, responses):
+        self.responses = responses      # list of (predicate, returncode, stdout)
+        self.calls = []
+
+    def __call__(self, cmd, **kw):
+        self.calls.append(cmd)
+        for pred, rc, out in self.responses:
+            if pred(cmd):
+                return type("R", (), {"returncode": rc, "stdout": out})()
+        return type("R", (), {"returncode": 0, "stdout": ""})()
+
+
+class TestStack(Base):
+    def setUp(self):
+        super().setUp()
+        self._run = stack.subprocess.run
+        self._port = stack.port_in_use
+        stack.port_in_use = lambda *a, **k: False
+
+    def tearDown(self):
+        stack.subprocess.run = self._run
+        stack.port_in_use = self._port
+        super().tearDown()
+
+    def test_up_skips_when_listener_exists(self):
+        stack.port_in_use = lambda port, **k: port == 4317
+        fake = FakeRun([])
+        stack.subprocess.run = fake
+        rv, out = self.run_capture(stack.main, ["up"])
+        self.assertEqual(rv, 0)
+        self.assertIn("already running on port 4317", out)
+        self.assertEqual(fake.calls, [])          # no docker calls at all
+
+    def test_up_starts_container_when_absent(self):
+        fake = FakeRun([
+            (lambda c: c[1] == "info", 0, ""),
+            (lambda c: c[1] == "inspect", 1, "no such container"),
+            (lambda c: c[1] == "run", 0, "abc123"),
+        ])
+        stack.subprocess.run = fake
+        rv, out = self.run_capture(stack.main, ["up"])
+        self.assertEqual(rv, 0)
+        run_cmd = next(c for c in fake.calls if c[1] == "run")
+        self.assertIn(common.STACK_IMAGE, run_cmd)
+        self.assertIn("4317:4317", " ".join(run_cmd))
+        self.assertIn("Grafana:  http://localhost:3000", out)
+
+    def test_up_restarts_stopped_container(self):
+        fake = FakeRun([
+            (lambda c: c[1] == "info", 0, ""),
+            (lambda c: c[1] == "inspect", 0, "false\n"),
+            (lambda c: c[1] == "start", 0, ""),
+        ])
+        stack.subprocess.run = fake
+        rv, out = self.run_capture(stack.main, ["up"])
+        self.assertEqual(rv, 0)
+        self.assertIn("Restarted existing stack", out)
+        self.assertFalse(any(c[1] == "run" for c in fake.calls))
+
+    def test_up_no_runtime(self):
+        fake = FakeRun([(lambda c: c[1] == "info", 1, "")])
+        stack.subprocess.run = fake
+        rv, out = self.run_capture(stack.main, ["up"])
+        self.assertEqual(rv, 1)
+        self.assertIn("No container runtime", out)
+
+    def test_down_stop_and_rm(self):
+        fake = FakeRun([
+            (lambda c: c[1] == "info", 0, ""),
+            (lambda c: c[1] == "inspect", 0, "true\n"),
+        ])
+        stack.subprocess.run = fake
+        rv, out = self.run_capture(stack.main, ["down", "--rm"])
+        self.assertEqual(rv, 0)
+        ops = [c[1] for c in fake.calls]
+        self.assertIn("stop", ops)
+        self.assertIn("rm", ops)
+
+    def test_status_reports(self):
+        stack.port_in_use = lambda port, **k: port == 4318
+        fake = FakeRun([
+            (lambda c: c[1] == "info", 0, ""),
+            (lambda c: c[1] == "inspect", 0, "true\n"),
+        ])
+        stack.subprocess.run = fake
+        _, out = self.run_capture(stack.main, ["status"])
+        self.assertIn("port 4318", out)
+        self.assertIn("running", out)
+
+
+class TestCommon(Base):
+    def test_managed_keys_match_env(self):
+        self.assertEqual(set(common.MANAGED_KEYS), set(common.otel_env().keys()))
+
+    def test_port_in_use_real_socket(self):
+        import socket
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        port = srv.getsockname()[1]
+        try:
+            self.assertTrue(common.port_in_use(port))
+        finally:
+            srv.close()
+        self.assertFalse(common.port_in_use(port))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
