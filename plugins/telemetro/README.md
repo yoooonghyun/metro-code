@@ -35,8 +35,27 @@ OTLP. All local; nothing leaves your machine.
 
 - `init` — "set up monitoring" / "모니터링 설정" — stack up + telemetry on
 - `status` — "is telemetry on?" / "모니터링 상태"
+- `diagnose` — "is my harness working as intended?" / "하네스 진단" — see below
 - `stop` — "stop monitoring" / "모니터링 꺼줘" — telemetry off + stack down
 - `update` — "update telemetro" — latest version
+
+### Diagnose: intent vs. behavior
+
+`/telemetro:diagnose` compares **what the telemetry says actually happened**
+against **what your harness configuration says should happen**. `query.py`
+digests the collected metrics and log events (token/cost by model, event
+counts, `tool_decision` breakdown by decision *and source* —
+`config`/`hook`/`user_*` — tool & skill usage, recent API errors); Claude then
+reads your CLAUDE.md, permissions, hooks and skills and reports:
+
+- ✅ guardrails that actually fired (`reject` by `config`/`hook`)
+- ⚠️ divergences — actions you had to refuse by hand (`user_reject`) → missing
+  rule/hook proposals; things you keep approving (`user_temporary`) → allowlist
+  candidates; skills your CLAUDE.md mandates but that never ran
+- 📉 API error clusters and token/cost outliers
+
+Tool/skill names in events come from `OTEL_LOG_TOOL_DETAILS=1`, which telemetro
+now installs (older installs: re-run `otel.py install`).
 
 Or call the scripts directly:
 
@@ -48,6 +67,7 @@ python3 $P/stack.py down [--rm]
 python3 $P/otel.py install [--project] [--endpoint http://host:4317] [--force]
 python3 $P/otel.py status
 python3 $P/otel.py remove
+python3 $P/query.py summary [--hours 168] [--grafana http://localhost:3000]
 ```
 
 ## How it works
@@ -57,7 +77,8 @@ python3 $P/otel.py remove
 | `scripts/common.py` | managed env keys, ports, settings/json helpers, port probe |
 | `scripts/otel.py` | merge/remove/report the OTel env block in Claude Code settings |
 | `scripts/stack.py` | run/stop the grafana/otel-lgtm container; skip when an OTLP listener exists |
-| `skills/init,status,stop,update` | `/telemetro:*` |
+| `scripts/query.py` | digest metrics (Prometheus) + log events (Loki) via Grafana proxies |
+| `skills/init,status,diagnose,stop,update` | `/telemetro:*` |
 
 - **Claude Code reads env at startup** — after `init` (or `stop`) a new session
   is needed for the change to take effect.

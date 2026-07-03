@@ -20,6 +20,7 @@ sys.path.insert(0, SCRIPTS)
 import common  # noqa: E402
 import otel    # noqa: E402
 import stack   # noqa: E402
+import query   # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -197,6 +198,77 @@ class TestStack(Base):
         _, out = self.run_capture(stack.main, ["status"])
         self.assertIn("port 4318", out)
         self.assertIn("running", out)
+
+
+class TestQuery(Base):
+    def setUp(self):
+        super().setUp()
+        self._get = query._get
+
+    def tearDown(self):
+        query._get = self._get
+        super().tearDown()
+
+    def test_summary_digest_from_mocked_backends(self):
+        def fake_get(url, timeout=15):
+            if "label/__name__/values" in url:
+                return {"status": "success",
+                        "data": ["claude_code_token_usage_tokens_total", "up"]}
+            if "/api/v1/query?" in url:
+                return {"status": "success", "data": {"result": [
+                    {"metric": {"type": "input", "model": "opus"},
+                     "value": [0, "1200"]},
+                    {"metric": {"type": "output", "model": "opus"},
+                     "value": [0, "300"]},
+                ]}}
+            if "loki/api/v1/query_range" in url:
+                line = lambda d: json.dumps(d)  # noqa: E731
+                return {"data": {"result": [{
+                    "stream": {"service_name": "claude-code"},
+                    "values": [
+                        ["1", line({"event.name": "claude_code.tool_decision",
+                                    "decision": "reject", "source": "hook",
+                                    "tool_name": "Bash"})],
+                        ["2", line({"event.name": "claude_code.tool_decision",
+                                    "decision": "accept", "source": "user_temporary",
+                                    "tool_name": "WebFetch"})],
+                        ["3", line({"event.name": "claude_code.tool_result",
+                                    "tool_name": "Skill"})],
+                        ["4", line({"event.name": "claude_code.api_error",
+                                    "error": "overloaded"})],
+                    ]}]}}
+            raise AssertionError("unexpected url " + url)
+
+        query._get = fake_get
+        rv, out = self.run_capture(query.main, ["summary", "--hours", "24"])
+        self.assertEqual(rv, 0)
+        self.assertIn("claude_code_token_usage_tokens_total", out)
+        self.assertIn("type=input", out)               # token breakdown
+        self.assertNotIn("- up:", out)                 # non-claude metric skipped
+        self.assertIn("reject (hook): 1", out)         # guardrail fired
+        self.assertIn("accept (user_temporary): 1", out)  # allowlist candidate
+        self.assertIn("used:Skill", out)
+        self.assertIn("overloaded", out)
+
+    def test_summary_unreachable_stack(self):
+        def fail(url, timeout=15):
+            raise OSError("connection refused")
+        query._get = fail
+        rv, out = self.run_capture(query.main, ["summary"])
+        self.assertEqual(rv, 1)
+        self.assertIn("Cannot reach the monitoring stack", out)
+        self.assertIn("/telemetro:init", out)
+
+    def test_summary_empty_data(self):
+        def empty(url, timeout=15):
+            if "label/__name__/values" in url:
+                return {"status": "success", "data": []}
+            return {"data": {"result": []}}
+        query._get = empty
+        rv, out = self.run_capture(query.main, ["summary"])
+        self.assertEqual(rv, 0)
+        self.assertIn("no claude_code metrics", out)
+        self.assertIn("no claude_code log events", out)
 
 
 class TestCommon(Base):
