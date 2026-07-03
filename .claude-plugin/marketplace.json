@@ -28,6 +28,17 @@
       },
       "keywords": ["meeting", "notes", "minutes", "transcription", "whisper", "audio"],
       "category": "productivity"
+    },
+    {
+      "name": "telemetro",
+      "source": "./plugins/telemetro",
+      "description": "Monitor Claude Code usage: enables the built-in OpenTelemetry export and runs a local Grafana stack (grafana/otel-lgtm) to receive it — tokens, cost, sessions, tool events on a dashboard.",
+      "version": "0.1.0",
+      "author": {
+        "name": "yoooonghyun"
+      },
+      "keywords": ["monitoring", "observability", "opentelemetry", "otel", "grafana", "metrics"],
+      "category": "productivity"
     }
   ]
 }

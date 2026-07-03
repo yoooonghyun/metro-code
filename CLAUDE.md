@@ -130,6 +130,22 @@ Records a meeting locally and turns it into minutes. Flow: `start` → `end`.
 - `update` skill = marketplace-update → plugin-update. Simpler than seekerizer's
   (no status line, so no absolute path to re-point).
 
+## Plugin: `telemetro` (Claude Code monitoring)
+
+Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
+- `otel.py` merges the OTel env block (`CLAUDE_CODE_ENABLE_TELEMETRY=1`,
+  `OTEL_*` exporters/endpoint) into the user's settings.json `env` — Claude Code
+  reads env at startup, so changes need a new session. Only managed keys are
+  touched; conflicting pre-existing values abort unless `--force`.
+- `stack.py` runs the **grafana/otel-lgtm** all-in-one container
+  (`telemetro-grafana`: OTLP collector + Prometheus + Loki + Tempo + Grafana;
+  ports 3000/4317/4318). `up` probes 4317/4318 first and starts **nothing when
+  an OTLP listener already exists** (respect an existing monitoring setup);
+  a stopped container is restarted, not recreated (metrics history lives
+  inside it — `down` keeps it, `down --rm` deletes).
+- Skills: `init` (stack up + otel install), `status`, `stop`, `update`.
+  Needs Docker/Podman only when telemetro provides the stack itself.
+
 ## Local development & testing
 
 Scripts are Python **stdlib only** (no dependencies, no API key). There is an
