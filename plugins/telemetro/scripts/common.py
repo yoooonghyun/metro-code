@@ -35,6 +35,10 @@ def otel_env(endpoint=None):
         "OTEL_EXPORTER_OTLP_ENDPOINT": endpoint,
         "OTEL_METRIC_EXPORT_INTERVAL": "10000",
         "OTEL_LOGS_EXPORT_INTERVAL": "5000",
+        # Include tool parameters (bash commands, MCP tool names, skill names)
+        # in tool events — required for /telemetro:diagnose to compare what
+        # actually ran against the harness's intent. Local-only data.
+        "OTEL_LOG_TOOL_DETAILS": "1",
     }
 
 

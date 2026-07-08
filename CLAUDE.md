@@ -143,8 +143,17 @@ Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
   an OTLP listener already exists** (respect an existing monitoring setup);
   a stopped container is restarted, not recreated (metrics history lives
   inside it — `down` keeps it, `down --rm` deletes).
-- Skills: `init` (stack up + otel install), `status`, `stop`, `update`.
-  Needs Docker/Podman only when telemetro provides the stack itself.
+- Skills: `init` (stack up + otel install), `status`, `diagnose`, `stop`,
+  `update`. Needs Docker/Podman only when telemetro provides the stack itself.
+- **`diagnose` = intent-vs-behavior.** `query.py summary` digests the collected
+  telemetry via the Grafana datasource proxies (Prometheus metric increases;
+  Loki log events parsed in Python, robust to label vs body placement) —
+  notably the `tool_decision` breakdown by decision **and source**
+  (`config`/`hook` = guardrail fired; `user_reject` = intent Claude violated;
+  `user_temporary` = allowlist candidate). The skill has Claude compare that
+  digest against CLAUDE.md/permissions/hooks/skills and propose config changes
+  — scripts fetch, Claude analyzes. `OTEL_LOG_TOOL_DETAILS=1` (managed by
+  otel.py) is what puts tool/skill names into the events.
 
 ## Local development & testing
 

@@ -17,9 +17,11 @@ import unittest
 SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 sys.path.insert(0, SCRIPTS)
 
-import common  # noqa: E402
-import otel    # noqa: E402
-import stack   # noqa: E402
+import common     # noqa: E402
+import otel       # noqa: E402
+import stack      # noqa: E402
+import query      # noqa: E402
+import inventory  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -197,6 +199,179 @@ class TestStack(Base):
         _, out = self.run_capture(stack.main, ["status"])
         self.assertIn("port 4318", out)
         self.assertIn("running", out)
+
+
+class TestQuery(Base):
+    def setUp(self):
+        super().setUp()
+        self._get = query._get
+
+    def tearDown(self):
+        query._get = self._get
+        super().tearDown()
+
+    def test_summary_digest_from_mocked_backends(self):
+        def fake_get(url, timeout=15):
+            if "label/__name__/values" in url:
+                return {"status": "success",
+                        "data": ["claude_code_token_usage_tokens_total", "up"]}
+            if "/api/v1/query?" in url:
+                return {"status": "success", "data": {"result": [
+                    {"metric": {"type": "input", "model": "opus"},
+                     "value": [0, "1200"]},
+                    {"metric": {"type": "output", "model": "opus"},
+                     "value": [0, "300"]},
+                ]}}
+            if "loki/api/v1/query_range" in url:
+                line = lambda d: json.dumps(d)  # noqa: E731
+                return {"data": {"result": [{
+                    "stream": {"service_name": "claude-code"},
+                    "values": [
+                        ["1", line({"event.name": "claude_code.tool_decision",
+                                    "decision": "reject", "source": "hook",
+                                    "tool_name": "Bash"})],
+                        ["2", line({"event.name": "claude_code.tool_decision",
+                                    "decision": "accept", "source": "user_temporary",
+                                    "tool_name": "WebFetch"})],
+                        ["3", line({"event.name": "claude_code.tool_result",
+                                    "tool_name": "Skill"})],
+                        ["4", line({"event.name": "claude_code.api_error",
+                                    "error": "overloaded"})],
+                    ]}]}}
+            raise AssertionError("unexpected url " + url)
+
+        query._get = fake_get
+        rv, out = self.run_capture(query.main, ["summary", "--hours", "24"])
+        self.assertEqual(rv, 0)
+        self.assertIn("claude_code_token_usage_tokens_total", out)
+        self.assertIn("type=input", out)               # token breakdown
+        self.assertNotIn("- up:", out)                 # non-claude metric skipped
+        self.assertIn("reject (hook): 1", out)         # guardrail fired
+        self.assertIn("accept (user_temporary): 1", out)  # allowlist candidate
+        self.assertIn("used:Skill", out)
+        self.assertIn("overloaded", out)
+
+    def test_summary_unreachable_stack(self):
+        def fail(url, timeout=15):
+            raise OSError("connection refused")
+        query._get = fail
+        rv, out = self.run_capture(query.main, ["summary"])
+        self.assertEqual(rv, 1)
+        self.assertIn("Cannot reach the monitoring stack", out)
+        self.assertIn("/telemetro:init", out)
+
+    def test_summary_empty_data(self):
+        def empty(url, timeout=15):
+            if "label/__name__/values" in url:
+                return {"status": "success", "data": []}
+            return {"data": {"result": []}}
+        query._get = empty
+        rv, out = self.run_capture(query.main, ["summary"])
+        self.assertEqual(rv, 0)
+        self.assertIn("no claude_code metrics", out)
+        self.assertIn("no claude_code log events", out)
+
+
+class TestEventClassification(Base):
+    def _digest(self, events):
+        return "\n".join(query.events_digest(events))
+
+    def test_skill_agent_mcp_attribution(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "tool_name": "Skill",
+             "tool_parameters": json.dumps({"skill_name": "echogram:start"})},
+            {"event.name": "claude_code.tool_result", "tool_name": "Task",
+             "tool_parameters": json.dumps({"subagent_type": "code-reviewer"})},
+            {"event.name": "claude_code.tool_result",
+             "tool_name": "mcp__memory__create_entities"},
+            {"event.name": "claude_code.tool_result",
+             "tool_name": "mcp__memory__search_nodes"},
+        ]
+        out = self._digest(events)
+        self.assertIn("skills invoked", out)
+        self.assertIn("echogram:start: 1", out)
+        self.assertIn("subagents spawned", out)
+        self.assertIn("code-reviewer: 1", out)
+        self.assertIn("MCP servers used", out)
+        self.assertIn("memory: 2", out)
+
+    def test_bash_command_heads(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "python3 /a/b/scripts/record.py start foo"})},
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "git push -u origin main && echo ok"})},
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "tool_parameters": json.dumps(
+                 {"command": "python3 /a/b/scripts/record.py stop | tail -1"})},
+        ]
+        out = self._digest(events)
+        self.assertIn("raw bash commands", out)
+        self.assertIn("python3 record.py: 2", out)   # path stripped, aggregated
+        self.assertIn("git push: 1", out)
+        self.assertNotIn("echo ok", out)             # only the head survives
+
+    def test_tool_failures_counted(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "success": "false"},
+            {"event.name": "claude_code.tool_result", "tool_name": "Bash",
+             "success": "true"},
+        ]
+        out = self._digest(events)
+        self.assertIn("tool failures", out)
+        self.assertIn("Bash: 1", out)
+
+    def test_params_as_dict_and_garbage(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "tool_name": "Skill",
+             "tool_parameters": {"skill": "review"}},
+            {"event.name": "claude_code.tool_result", "tool_name": "Skill",
+             "tool_parameters": "not-json"},
+        ]
+        out = self._digest(events)          # must not raise
+        self.assertIn("review: 1", out)
+        self.assertIn("(unnamed): 1", out)
+
+
+class TestInventory(Base):
+    def _mk(self, *parts, content=""):
+        path = os.path.join(*parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return path
+
+    def test_full_inventory(self):
+        proj = tempfile.mkdtemp()
+        self._mk(proj, ".claude", "skills", "deploy", "SKILL.md",
+                 content="---\nname: deploy\n---\n")
+        self._mk(self.home, ".claude", "skills", "notes", "SKILL.md",
+                 content="---\nname: notes\n---\n")
+        self._mk(proj, ".claude", "agents", "reviewer.md", content="# r")
+        self._mk(proj, ".mcp.json",
+                 content=json.dumps({"mcpServers": {
+                     "memory-graph": {"command": "npx"},
+                     "github": {"url": "https://x"}}}))
+        self._mk(proj, "CLAUDE.md", content="# rules")
+
+        rv, out = self.run_capture(inventory.main, ["--project", proj])
+        self.assertEqual(rv, 0)
+        self.assertIn("deploy  [project]", out)
+        self.assertIn("notes  [user]", out)
+        self.assertIn("reviewer  [project]", out)
+        self.assertIn("memory-graph (stdio)  ← memory-type", out)
+        self.assertIn("github (remote)", out)
+        self.assertIn("[project] " + os.path.join(proj, "CLAUDE.md"), out)
+
+    def test_empty_project(self):
+        proj = tempfile.mkdtemp()
+        rv, out = self.run_capture(inventory.main, ["--project", proj])
+        self.assertEqual(rv, 0)
+        self.assertIn("(none found)", out)
+        self.assertIn("(no CLAUDE.md at any tier)", out)
 
 
 class TestCommon(Base):
