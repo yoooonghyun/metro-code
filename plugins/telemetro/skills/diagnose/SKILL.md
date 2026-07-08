@@ -41,13 +41,35 @@ The scripts only fetch data — you (Claude) do the analysis.
    - `.claude/settings.json` + `~/.claude/settings.json` — `permissions`
      (allow/deny/ask) and `hooks`
 
-3. Write the diagnosis, grounded strictly in the digest numbers. Structure:
+3. Write the diagnosis **following the report template** — read it first:
 
-   **✅ Working as intended** — guardrails that actually fired:
+   ```bash
+   cat "${CLAUDE_PLUGIN_ROOT}/templates/diagnose-report.md"
+   ```
+
+   Fill every section in order (1 Verdict → 6 Proposed changes); `{…}`
+   placeholders describe what goes where. Keep the section numbering — proposed
+   changes reference findings by section number. If a section has no findings,
+   write "none observed" rather than dropping it. Write the report in the
+   user's language (localize headings), keeping the structure identical.
+
+   For **section 5 (Trend)**, list previous reports and read the most recent
+   one if any:
+
+   ```bash
+   ls -t "$(python3 -c "import sys;sys.path.insert(0,'${CLAUDE_PLUGIN_ROOT}/scripts');import common;print(common.reports_dir())")" | head -3
+   ```
+
+   Compare: fixed / persisting / new divergences. First run → "first diagnosis
+   — no baseline yet."
+
+   Analysis guidance per section:
+
+   **§2 Working as intended** — guardrails that actually fired:
    - `tool_decision` rejects with source `config`/`hook` = deny rules and hooks
      doing their job. Name which rule/hook likely fired.
 
-   **⚠️ Divergence: behavior vs. intent**
+   **§3.1 Rules & permissions**
    - `user_reject`/`user_abort` decisions = Claude repeatedly attempted actions
      the user had to refuse by hand → propose the missing CLAUDE.md rule, deny
      permission, or PreToolUse hook that would encode that intent.
@@ -55,7 +77,7 @@ The scripts only fetch data — you (Claude) do the analysis.
      tool = the user keeps approving the same thing → propose an allowlist entry
      (quote the exact `permissions.allow` rule to add).
 
-   **🧩 Skills** — judge against *situations*, not mere non-use. For each
+   **§3.2 Skills** — judge against *situations*, not mere non-use. For each
    declared skill, read its SKILL.md to derive its **capability signature**
    (the commands/scripts/MCP tools its steps wrap), then:
    - **Should have fired but didn't**: the digest's "raw bash commands" /
@@ -72,7 +94,7 @@ The scripts only fetch data — you (Claude) do the analysis.
    - No matching situation in the window → say "no evidence either way";
      don't flag unused skills as a problem by themselves.
 
-   **🤖 Subagents** — same two lenses:
+   **§3.3 Subagents** — same two lenses:
    - **Missed delegation**: work matching a declared agent's description was
      handled inline or by a general-purpose `Task` (digest shows generic
      spawns / heavy inline tool runs of that kind) while that agent never
@@ -84,7 +106,7 @@ The scripts only fetch data — you (Claude) do the analysis.
      `OTEL_LOG_USER_PROMPTS=1` (prompt content in events — local-only, but a
      privacy tradeoff; off by default).
 
-   **🧠 Memory** — if a memory-type MCP server is configured (flagged in the
+   **§3.4 Memory** — if a memory-type MCP server is configured (flagged in the
    inventory):
    - Zero usage in "MCP servers used" = it's wired but never consulted →
      propose a CLAUDE.md line telling Claude when to read/write it, or remove
@@ -94,14 +116,22 @@ The scripts only fetch data — you (Claude) do the analysis.
      the self-improvement loop is broken; propose adding the recurring
      corrections to CLAUDE.md now.
 
-   **📉 Health & cost**
+   **§4 Health & cost**
    - `api_error` clusters, token/cost outliers by model, unusually heavy tools —
      anything that suggests harness friction (retries, oversized context).
 
-   **🛠 Proposed changes** — a short, copy-pasteable list: settings edits,
-   CLAUDE.md additions, hook suggestions. Don't apply them; this skill reports.
+   **§6 Proposed changes** — numbered, copy-pasteable, each mapped to a finding
+   by section number. Don't apply them; this skill reports.
 
-4. Offer to apply any of the proposed changes if the user wants.
+4. **Save the report** to the reports archive (used by the next diagnosis's
+   Trend section), then show it in the conversation too:
+
+   ```bash
+   REPORTS="$(python3 -c "import sys;sys.path.insert(0,'${CLAUDE_PLUGIN_ROOT}/scripts');import common;print(common.reports_dir())")"
+   # write the filled report to "$REPORTS/$(date +%Y%m%d-%H%M%S).md"
+   ```
+
+5. Offer to apply any of the proposed changes if the user wants.
 
 ## Notes
 

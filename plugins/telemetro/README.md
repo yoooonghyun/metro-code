@@ -57,6 +57,12 @@ reads your CLAUDE.md, permissions, hooks and skills and reports:
 Tool/skill names in events come from `OTEL_LOG_TOOL_DETAILS=1`, which telemetro
 now installs (older installs: re-run `otel.py install`).
 
+The report follows a fixed template (`templates/diagnose-report.md`: Verdict →
+Working-as-intended → Divergences (rules/skills/subagents/memory) → Health &
+cost → **Trend vs. previous diagnosis** → numbered Proposed changes), and every
+report is archived under the data dir (`reports/<timestamp>.md`) so the next
+diagnosis can tell you which divergences were fixed, persist, or are new.
+
 Or call the scripts directly:
 
 ```bash
