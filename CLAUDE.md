@@ -156,7 +156,11 @@ Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
   otel.py) is what puts tool/skill names into the events. The report is written
   against `templates/diagnose-report.md` (fixed numbered sections, proposals
   reference findings by section number) and archived to the data dir's
-  `reports/` so the next run's Trend section can diff against it.
+  `reports/` so the next run's Trend section can diff against it. The `apply`
+  skill executes selected §6 proposals (settings backup first, additions only,
+  hook scripts shown before saving, plugin-cache edits warned as
+  update-volatile) and annotates the report so the next diagnosis verifies the
+  effect — diagnose → apply → re-diagnose closes the self-improvement loop.
 
 ## Local development & testing
 
