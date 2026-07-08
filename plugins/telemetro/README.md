@@ -36,6 +36,7 @@ OTLP. All local; nothing leaves your machine.
 - `init` — "set up monitoring" / "모니터링 설정" — stack up + telemetry on
 - `status` — "is telemetry on?" / "모니터링 상태"
 - `diagnose` — "is my harness working as intended?" / "하네스 진단" — see below
+- `apply` — "apply proposed changes 1 and 3" / "진단 결과 반영해줘" — apply §6 proposals
 - `stop` — "stop monitoring" / "모니터링 꺼줘" — telemetry off + stack down
 - `update` — "update telemetro" — latest version
 
@@ -56,6 +57,18 @@ reads your CLAUDE.md, permissions, hooks and skills and reports:
 
 Tool/skill names in events come from `OTEL_LOG_TOOL_DETAILS=1`, which telemetro
 now installs (older installs: re-run `otel.py install`).
+
+The report follows a fixed template (`templates/diagnose-report.md`: Verdict →
+Working-as-intended → Divergences (rules/skills/subagents/memory) → Health &
+cost → **Trend vs. previous diagnosis** → numbered Proposed changes), and every
+report is archived under the data dir (`reports/<timestamp>.md`) so the next
+diagnosis can tell you which divergences were fixed, persist, or are new.
+
+`/telemetro:apply` then closes the loop: pick §6 proposals (all or by number)
+and it applies them — settings/permission entries (with a backup), CLAUDE.md
+additions, hook scripts (shown before saving), skill-description fixes — never
+broader than proposed, and each applied item is annotated in the report so the
+next diagnosis verifies the effect.
 
 Or call the scripts directly:
 

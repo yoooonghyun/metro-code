@@ -153,7 +153,14 @@ Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
   `user_temporary` = allowlist candidate). The skill has Claude compare that
   digest against CLAUDE.md/permissions/hooks/skills and propose config changes
   — scripts fetch, Claude analyzes. `OTEL_LOG_TOOL_DETAILS=1` (managed by
-  otel.py) is what puts tool/skill names into the events.
+  otel.py) is what puts tool/skill names into the events. The report is written
+  against `templates/diagnose-report.md` (fixed numbered sections, proposals
+  reference findings by section number) and archived to the data dir's
+  `reports/` so the next run's Trend section can diff against it. The `apply`
+  skill executes selected §6 proposals (settings backup first, additions only,
+  hook scripts shown before saving, plugin-cache edits warned as
+  update-volatile) and annotates the report so the next diagnosis verifies the
+  effect — diagnose → apply → re-diagnose closes the self-improvement loop.
 
 ## Local development & testing
 

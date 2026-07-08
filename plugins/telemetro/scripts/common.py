@@ -55,6 +55,13 @@ def data_dir():
     return base
 
 
+def reports_dir():
+    """Where diagnose reports are archived (survives plugin updates)."""
+    d = os.path.join(data_dir(), "reports")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def settings_path(scope="global"):
     if scope == "project":
         return os.path.join(os.getcwd(), ".claude", "settings.json")

@@ -374,6 +374,25 @@ class TestInventory(Base):
         self.assertIn("(no CLAUDE.md at any tier)", out)
 
 
+class TestReportTemplate(Base):
+    TEMPLATE = os.path.join(SCRIPTS, "..", "templates", "diagnose-report.md")
+
+    def test_template_has_required_sections(self):
+        with open(self.TEMPLATE, encoding="utf-8") as f:
+            t = f.read()
+        for heading in ("## 1. Verdict", "## 2. Working as intended",
+                        "## 3. Divergences", "### 3.1 Rules & permissions",
+                        "### 3.2 Skills", "### 3.3 Subagents", "### 3.4 Memory",
+                        "## 4. Health & cost", "## 5. Trend vs. previous diagnosis",
+                        "## 6. Proposed changes"):
+            self.assertIn(heading, t)
+
+    def test_reports_dir_created_under_data_dir(self):
+        d = common.reports_dir()
+        self.assertTrue(os.path.isdir(d))
+        self.assertTrue(d.startswith(os.environ["TELEMETRO_DATA_DIR"]))
+
+
 class TestCommon(Base):
     def test_managed_keys_match_env(self):
         self.assertEqual(set(common.MANAGED_KEYS), set(common.otel_env().keys()))
