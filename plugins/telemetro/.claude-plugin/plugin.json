@@ -1,11 +1,12 @@
 {
   "name": "telemetro",
   "displayName": "Telemetro",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Monitor your Claude Code usage: wires the built-in OpenTelemetry export into your settings and runs a local Grafana stack (grafana/otel-lgtm) to receive it — tokens, cost, sessions, tool events on a dashboard.",
   "author": {
     "name": "yoooonghyun"
   },
   "keywords": ["monitoring", "observability", "opentelemetry", "otel", "grafana", "metrics"],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }

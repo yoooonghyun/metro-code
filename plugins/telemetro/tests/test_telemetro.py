@@ -22,6 +22,7 @@ import otel       # noqa: E402
 import stack      # noqa: E402
 import query      # noqa: E402
 import inventory  # noqa: E402
+import snapshot   # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -295,6 +296,16 @@ class TestEventClassification(Base):
         self.assertIn("MCP servers used", out)
         self.assertIn("memory: 2", out)
 
+    def test_session_ids_counted(self):
+        events = [
+            {"event.name": "claude_code.tool_result", "session.id": "abc"},
+            {"event.name": "claude_code.tool_result", "session.id": "abc"},
+            {"event.name": "claude_code.user_prompt", "session_id": "def"},
+        ]
+        out = self._digest(events)
+        self.assertIn("sessions in window: 2", out)
+        self.assertIn("abc: 2 events", out)
+
     def test_bash_command_heads(self):
         events = [
             {"event.name": "claude_code.tool_result", "tool_name": "Bash",
@@ -372,6 +383,118 @@ class TestInventory(Base):
         self.assertEqual(rv, 0)
         self.assertIn("(none found)", out)
         self.assertIn("(no CLAUDE.md at any tier)", out)
+
+
+class TestSnapshot(Base):
+    def _proj(self):
+        proj = tempfile.mkdtemp()
+        with open(os.path.join(proj, "CLAUDE.md"), "w") as f:
+            f.write("# rules v1")
+        return proj
+
+    def _log_lines(self):
+        path = os.path.join(os.environ["TELEMETRO_DATA_DIR"], "snapshots.jsonl")
+        try:
+            with open(path, encoding="utf-8") as f:
+                return [json.loads(l) for l in f.read().splitlines()]
+        except OSError:
+            return []
+
+    def test_records_only_on_change(self):
+        proj = self._proj()
+        payload = {"cwd": proj, "session_id": "s1", "hook_event_name": "SessionStart"}
+        self.assertIsNotNone(snapshot.record(payload))     # first -> epoch 1
+        self.assertIsNone(snapshot.record(payload))        # unchanged -> no line
+        self.assertIsNone(snapshot.record({**payload, "session_id": "s2"}))
+        # change the harness mid-"session"
+        with open(os.path.join(proj, "CLAUDE.md"), "a") as f:
+            f.write("\nnew rule")
+        entry = snapshot.record(payload)                   # changed -> epoch 2
+        self.assertIsNotNone(entry)
+        lines = self._log_lines()
+        self.assertEqual(len(lines), 2)
+        self.assertNotEqual(lines[0]["config_hash"], lines[1]["config_hash"])
+        # full configs stored once per hash
+        cfgs = os.listdir(os.path.join(os.environ["TELEMETRO_DATA_DIR"], "configs"))
+        self.assertEqual(len(cfgs), 2)
+
+    def test_snapshot_reflects_settings_and_skills(self):
+        proj = self._proj()
+        os.makedirs(os.path.join(proj, ".claude", "skills", "deploy"), exist_ok=True)
+        with open(os.path.join(proj, ".claude", "skills", "deploy", "SKILL.md"), "w") as f:
+            f.write("---\nname: deploy\n---\n")
+        common.save_json(os.path.join(proj, ".claude", "settings.json"),
+                         {"permissions": {"allow": ["Bash(git *)"]},
+                          "hooks": {"PreToolUse": []}})
+        snap = snapshot.build_snapshot(proj)
+        self.assertIn("deploy", snap["skills"])
+        self.assertEqual(snap["settings_project"]["permissions"]["allow"],
+                         ["Bash(git *)"])
+        self.assertIn("PreToolUse", snap["settings_project"]["hooks"])
+
+    def test_skill_content_change_creates_epoch(self):
+        proj = self._proj()
+        sk = os.path.join(proj, ".claude", "skills", "deploy", "SKILL.md")
+        os.makedirs(os.path.dirname(sk), exist_ok=True)
+        with open(sk, "w") as f:
+            f.write("---\nname: deploy\ndescription: old triggers\n---\n")
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        self.assertIsNone(snapshot.record(payload))
+        # same skill NAME, changed content (e.g. apply sharpened its triggers)
+        with open(sk, "w") as f:
+            f.write("---\nname: deploy\ndescription: sharper triggers\n---\n")
+        self.assertIsNotNone(snapshot.record(payload))   # new epoch
+
+    def test_agent_and_hook_command_changes_create_epochs(self):
+        proj = self._proj()
+        ag = os.path.join(proj, ".claude", "agents", "reviewer.md")
+        os.makedirs(os.path.dirname(ag), exist_ok=True)
+        with open(ag, "w") as f:
+            f.write("read-only reviewer")
+        settings = os.path.join(proj, ".claude", "settings.json")
+        common.save_json(settings, {"hooks": {"PreToolUse": [
+            {"hooks": [{"type": "command", "command": "check.sh v1"}]}]}})
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        # agent definition edited -> epoch
+        with open(ag, "w") as f:
+            f.write("reviewer that may edit")
+        self.assertIsNotNone(snapshot.record(payload))
+        # hook COMMAND edited (same event key) -> epoch
+        common.save_json(settings, {"hooks": {"PreToolUse": [
+            {"hooks": [{"type": "command", "command": "check.sh v2"}]}]}})
+        self.assertIsNotNone(snapshot.record(payload))
+
+    def test_mcp_spec_change_creates_epoch(self):
+        proj = self._proj()
+        mcp = os.path.join(proj, ".mcp.json")
+        with open(mcp, "w") as f:
+            json.dump({"mcpServers": {"github": {"url": "https://a"}}}, f)
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        with open(mcp, "w") as f:                      # same name, new spec
+            json.dump({"mcpServers": {"github": {"url": "https://b"}}}, f)
+        self.assertIsNotNone(snapshot.record(payload))
+
+    def test_never_fails_on_garbage_stdin(self):
+        import io as _io
+        old = sys.stdin
+        sys.stdin = _io.StringIO("not json{{{")
+        try:
+            self.assertEqual(snapshot.main(), 0)
+        finally:
+            sys.stdin = old
+
+    def test_hooks_json_registers_both_events(self):
+        path = os.path.join(SCRIPTS, "..", "hooks", "hooks.json")
+        with open(path, encoding="utf-8") as f:
+            hooks = json.load(f)["hooks"]
+        self.assertIn("SessionStart", hooks)
+        self.assertIn("UserPromptSubmit", hooks)
+        for ev in ("SessionStart", "UserPromptSubmit"):
+            cmd = hooks[ev][0]["hooks"][0]["command"]
+            self.assertIn("snapshot.py", cmd)
 
 
 class TestReportTemplate(Base):

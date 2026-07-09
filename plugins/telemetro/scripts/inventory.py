@@ -11,6 +11,7 @@ Usage:
     inventory.py [--project DIR]     # default: current directory
 """
 import glob
+import hashlib
 import json
 import os
 import re
@@ -29,7 +30,7 @@ def _name_from_skill_md(path):
 
 
 def find_skills(project):
-    """{skill name: origin} across project, user, and plugin-cache scopes."""
+    """{skill name: {origin, path}} across project, user, and plugin scopes."""
     out = {}
     roots = [
         (os.path.join(project, ".claude", "skills"), "project"),
@@ -37,19 +38,19 @@ def find_skills(project):
     ]
     for base, origin in roots:
         for p in glob.glob(os.path.join(base, "*", "SKILL.md")):
-            out.setdefault(_name_from_skill_md(p), origin)
+            out.setdefault(_name_from_skill_md(p), {"origin": origin, "path": p})
     for p in glob.glob(os.path.expanduser(
             "~/.claude/plugins/**/skills/*/SKILL.md"), recursive=True):
         plugin = "plugin"
         m = re.search(r"/plugins/(?:cache/)?(?:[^/]+/)?([^/@]+)[^/]*/skills/", p)
         if m:
             plugin = f"plugin:{m.group(1)}"
-        out.setdefault(_name_from_skill_md(p), plugin)
+        out.setdefault(_name_from_skill_md(p), {"origin": plugin, "path": p})
     return out
 
 
 def find_agents(project):
-    """{agent name: origin} from project/user agent dirs and plugin caches."""
+    """{agent name: {origin, path}} from project/user dirs and plugin caches."""
     out = {}
     roots = [
         (os.path.join(project, ".claude", "agents"), "project"),
@@ -57,10 +58,12 @@ def find_agents(project):
     ]
     for base, origin in roots:
         for p in glob.glob(os.path.join(base, "*.md")):
-            out.setdefault(os.path.splitext(os.path.basename(p))[0], origin)
+            out.setdefault(os.path.splitext(os.path.basename(p))[0],
+                           {"origin": origin, "path": p})
     for p in glob.glob(os.path.expanduser(
             "~/.claude/plugins/**/agents/*.md"), recursive=True):
-        out.setdefault(os.path.splitext(os.path.basename(p))[0], "plugin")
+        out.setdefault(os.path.splitext(os.path.basename(p))[0],
+                       {"origin": "plugin", "path": p})
     return out
 
 
@@ -75,7 +78,9 @@ def _collect_mcp_servers(obj, found):
                     kind = spec.get("type") or ("stdio" if spec.get("command")
                                                 else "remote" if spec.get("url")
                                                 else "unknown")
-                found.setdefault(name, kind)
+                sha = hashlib.sha256(json.dumps(
+                    spec, sort_keys=True, default=str).encode()).hexdigest()[:16]
+                found.setdefault(name, {"kind": kind, "sha": sha})
         for v in obj.values():
             _collect_mcp_servers(v, found)
     elif isinstance(obj, list):
@@ -123,23 +128,23 @@ def main(argv):
 
     skills = find_skills(project)
     print(f"## Skills declared ({len(skills)})")
-    for name, origin in sorted(skills.items()):
-        print(f"- {name}  [{origin}]")
+    for name, info in sorted(skills.items()):
+        print(f"- {name}  [{info['origin']}]")
     if not skills:
         print("(none found)")
 
     agents = find_agents(project)
     print(f"\n## Subagents declared ({len(agents)})")
-    for name, origin in sorted(agents.items()):
-        print(f"- {name}  [{origin}]")
+    for name, info in sorted(agents.items()):
+        print(f"- {name}  [{info['origin']}]")
     if not agents:
         print("(none found)")
 
     mcp = find_mcp_servers(project)
     print(f"\n## MCP servers configured ({len(mcp)})")
-    for name, kind in sorted(mcp.items()):
+    for name, info in sorted(mcp.items()):
         tag = "  ← memory-type" if MEMORY_HINT.search(name) else ""
-        print(f"- {name} ({kind}){tag}")
+        print(f"- {name} ({info['kind']}){tag}")
     if not mcp:
         print("(none found)")
 

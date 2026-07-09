@@ -28,7 +28,30 @@ The scripts only fetch data — you (Claude) do the analysis.
    `OTEL_LOG_TOOL_DETAILS=1` env (installed by current telemetro; older installs
    should re-run `otel.py install`).
 
-2. Enumerate the **intent** side of the comparison:
+2. Establish the **config timeline** — the harness changes over time, even
+   mid-session (sessions run 100+ tasks), so events must be judged against the
+   configuration active *when they happened*, not today's. The bundled hooks
+   (SessionStart + every UserPromptSubmit) append a line to `snapshots.jsonl`
+   whenever the harness fingerprint actually changes:
+
+   ```bash
+   DATA="$(python3 -c "import sys;sys.path.insert(0,'${CLAUDE_PLUGIN_ROOT}/scripts');import common;print(common.data_dir())")"
+   tail -50 "$DATA/snapshots.jsonl" 2>/dev/null || echo "(no snapshots yet)"
+   ```
+
+   - Consecutive lines form **epochs**: config `hash_i` was in force from
+     `ts_i` until `ts_{i+1}`. Load differing configs from `configs/<hash>.json`
+     to see exactly what changed at each boundary.
+   - **Attribute each divergence to the epoch its events fall in** (by event
+     timestamp; session ids in both the digest and the log are a secondary
+     check). If a divergence only occurred under an older config that a later
+     epoch already fixed, report it as already-resolved, not as a current
+     problem — and let the Trend section credit the fix.
+   - No snapshots yet (hooks need a session started after installing
+     telemetro): note that findings assume today's config applied to the whole
+     window, and flag that caveat in the Verdict.
+
+3. Enumerate the **intent** side of the comparison:
 
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/inventory.py"
