@@ -174,10 +174,13 @@ def events_digest(events):
     if not events:
         return ["(no claude_code log events found in this window)"]
     by_name, decisions, tools, errors = {}, {}, {}, []
-    skills, agents, mcp, failures, bash = {}, {}, {}, {}, {}
+    skills, agents, mcp, failures, bash, sessions = {}, {}, {}, {}, {}, {}
     for ev in events:
         name = _field(ev, "event.name", "event_name", "name") or "(unknown)"
         _count(by_name, name)
+        sid = _field(ev, "session.id", "session_id")
+        if sid:
+            _count(sessions, sid)
         if "tool_decision" in name:
             decision = _field(ev, "decision") or "?"
             source = _field(ev, "source") or "?"
@@ -200,6 +203,10 @@ def events_digest(events):
         return sorted(counter.items(), key=lambda kv: -kv[1])[:n]
 
     lines = [f"- events scanned: {len(events)}"]
+    if sessions:
+        lines.append(f"- sessions in window: {len(sessions)}")
+        lines += [f"    - {k}: {v} events" for k, v in
+                  sorted(sessions.items(), key=lambda kv: -kv[1])[:10]]
     lines.append("- by event name:")
     lines += [f"    - {k}: {v}" for k, v in top(by_name)]
     if decisions:

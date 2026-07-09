@@ -70,6 +70,16 @@ additions, hook scripts (shown before saving), skill-description fixes — never
 broader than proposed, and each applied item is annotated in the report so the
 next diagnosis verifies the effect.
 
+**Config epochs.** The harness itself changes over time — even mid-session —
+so telemetro bundles hooks (SessionStart + every UserPromptSubmit) that
+fingerprint the harness (CLAUDE.md tiers, permissions/hooks/env, declared
+skills/agents/MCP servers) and append to `snapshots.jsonl` **only when the
+fingerprint changes** (~25ms per prompt, deduplicated; full configs stored once
+under `configs/<hash>.json`). Consecutive lines form epochs, and diagnose
+attributes each event to the config active at its timestamp — a divergence
+that only occurred under an older, since-fixed config is reported as resolved,
+not as a current problem.
+
 Or call the scripts directly:
 
 ```bash

@@ -161,6 +161,13 @@ Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
   hook scripts shown before saving, plugin-cache edits warned as
   update-volatile) and annotates the report so the next diagnosis verifies the
   effect — diagnose → apply → re-diagnose closes the self-improvement loop.
+- **Config epochs**: bundled hooks (`hooks/hooks.json`: SessionStart + every
+  UserPromptSubmit) run `snapshot.py`, which fingerprints the harness and
+  appends to `snapshots.jsonl` only on change (~25ms, dedup by hash; full
+  configs in `configs/<hash>.json`). Sessions run 100+ tasks, so per-session
+  snapshots would be too coarse — per-prompt dedup gives epoch boundaries at
+  the turn level, and diagnose attributes events to the epoch containing their
+  timestamp (never breaks the session: snapshot.py always exits 0).
 
 ## Local development & testing
 

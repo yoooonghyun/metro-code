@@ -33,7 +33,7 @@
       "name": "telemetro",
       "source": "./plugins/telemetro",
       "description": "Monitor Claude Code usage and diagnose your harness: built-in OpenTelemetry export into a local Grafana stack, plus intent-vs-behavior analysis of the collected telemetry.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": {
         "name": "yoooonghyun"
       },
