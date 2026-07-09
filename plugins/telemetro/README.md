@@ -72,8 +72,10 @@ next diagnosis verifies the effect.
 
 **Config epochs.** The harness itself changes over time — even mid-session —
 so telemetro bundles hooks (SessionStart + every UserPromptSubmit) that
-fingerprint the harness (CLAUDE.md tiers, permissions/hooks/env, declared
-skills/agents/MCP servers) and append to `snapshots.jsonl` **only when the
+fingerprint the harness — CLAUDE.md tiers, permissions, the full hooks config,
+env keys, and **content hashes** of every declared skill, subagent, and MCP
+server spec (editing a skill's SKILL.md or a hook command opens a new epoch,
+not just adding/removing one) — and append to `snapshots.jsonl` **only when the
 fingerprint changes** (~25ms per prompt, deduplicated; full configs stored once
 under `configs/<hash>.json`). Consecutive lines form epochs, and diagnose
 attributes each event to the config active at its timestamp — a divergence

@@ -53,13 +53,21 @@ def build_snapshot(project):
         s = load_json(path, {})
         snap[f"settings_{scope}"] = {
             "permissions": s.get("permissions") or {},
-            "hooks": sorted((s.get("hooks") or {}).keys()),
+            # Full hooks object: a changed hook command must open a new epoch,
+            # not just an added/removed event key.
+            "hooks": s.get("hooks") or {},
             "env_keys": sorted((s.get("env") or {}).keys()),
         }
 
-    snap["skills"] = sorted(find_skills(project).keys())
-    snap["agents"] = sorted(find_agents(project).keys())
-    snap["mcp_servers"] = sorted(find_mcp_servers(project).keys())
+    # Content hashes, not just names: editing a skill's SKILL.md, an agent
+    # definition, or an MCP server spec changes the harness's behavior and must
+    # start a new epoch even though the name list is identical.
+    snap["skills"] = {name: _file_digest(info["path"])
+                      for name, info in sorted(find_skills(project).items())}
+    snap["agents"] = {name: _file_digest(info["path"])
+                      for name, info in sorted(find_agents(project).items())}
+    snap["mcp_servers"] = {name: info["sha"]
+                           for name, info in sorted(find_mcp_servers(project).items())}
     return snap
 
 

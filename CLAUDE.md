@@ -162,7 +162,9 @@ Wires Claude Code's **built-in OpenTelemetry export** to a local Grafana stack.
   update-volatile) and annotates the report so the next diagnosis verifies the
   effect — diagnose → apply → re-diagnose closes the self-improvement loop.
 - **Config epochs**: bundled hooks (`hooks/hooks.json`: SessionStart + every
-  UserPromptSubmit) run `snapshot.py`, which fingerprints the harness and
+  UserPromptSubmit) run `snapshot.py`, which fingerprints the harness —
+  including **content hashes** of skills/agents/MCP specs and the full hooks
+  object, so editing a SKILL.md or a hook command opens a new epoch — and
   appends to `snapshots.jsonl` only on change (~25ms, dedup by hash; full
   configs in `configs/<hash>.json`). Sessions run 100+ tasks, so per-session
   snapshots would be too coarse — per-prompt dedup gives epoch boundaries at

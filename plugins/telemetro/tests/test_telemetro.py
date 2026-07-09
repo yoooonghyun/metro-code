@@ -432,6 +432,51 @@ class TestSnapshot(Base):
                          ["Bash(git *)"])
         self.assertIn("PreToolUse", snap["settings_project"]["hooks"])
 
+    def test_skill_content_change_creates_epoch(self):
+        proj = self._proj()
+        sk = os.path.join(proj, ".claude", "skills", "deploy", "SKILL.md")
+        os.makedirs(os.path.dirname(sk), exist_ok=True)
+        with open(sk, "w") as f:
+            f.write("---\nname: deploy\ndescription: old triggers\n---\n")
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        self.assertIsNone(snapshot.record(payload))
+        # same skill NAME, changed content (e.g. apply sharpened its triggers)
+        with open(sk, "w") as f:
+            f.write("---\nname: deploy\ndescription: sharper triggers\n---\n")
+        self.assertIsNotNone(snapshot.record(payload))   # new epoch
+
+    def test_agent_and_hook_command_changes_create_epochs(self):
+        proj = self._proj()
+        ag = os.path.join(proj, ".claude", "agents", "reviewer.md")
+        os.makedirs(os.path.dirname(ag), exist_ok=True)
+        with open(ag, "w") as f:
+            f.write("read-only reviewer")
+        settings = os.path.join(proj, ".claude", "settings.json")
+        common.save_json(settings, {"hooks": {"PreToolUse": [
+            {"hooks": [{"type": "command", "command": "check.sh v1"}]}]}})
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        # agent definition edited -> epoch
+        with open(ag, "w") as f:
+            f.write("reviewer that may edit")
+        self.assertIsNotNone(snapshot.record(payload))
+        # hook COMMAND edited (same event key) -> epoch
+        common.save_json(settings, {"hooks": {"PreToolUse": [
+            {"hooks": [{"type": "command", "command": "check.sh v2"}]}]}})
+        self.assertIsNotNone(snapshot.record(payload))
+
+    def test_mcp_spec_change_creates_epoch(self):
+        proj = self._proj()
+        mcp = os.path.join(proj, ".mcp.json")
+        with open(mcp, "w") as f:
+            json.dump({"mcpServers": {"github": {"url": "https://a"}}}, f)
+        payload = {"cwd": proj, "session_id": "s1"}
+        self.assertIsNotNone(snapshot.record(payload))
+        with open(mcp, "w") as f:                      # same name, new spec
+            json.dump({"mcpServers": {"github": {"url": "https://b"}}}, f)
+        self.assertIsNotNone(snapshot.record(payload))
+
     def test_never_fails_on_garbage_stdin(self):
         import io as _io
         old = sys.stdin
